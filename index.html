@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ATS Program — Executive Dashboard</title>
+<link rel="stylesheet" href="assets/css/style.css">
+</head>
+<body>
+
+<input type="file" id="folder-input" webkitdirectory directory multiple style="display:none">
+
+<div id="app-shell">
+
+  <aside id="sidebar">
+    <div class="brand">
+      <div class="brand-mark">ATS</div>
+      <div class="brand-text">
+        <div class="t1">ATS Program</div>
+        <div class="t2">Executive Dashboard</div>
+      </div>
+    </div>
+
+    <nav class="side-nav">
+      <button class="nav-item active" data-view="overview">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></svg>
+        Overview
+      </button>
+      <button class="nav-item" data-view="portfolio">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7l9-4 9 4-9 4-9-4z"/><path d="M3 12l9 4 9-4"/><path d="M3 17l9 4 9-4"/></svg>
+        Portfolios
+      </button>
+      <button class="nav-item" data-view="trends">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 17l6-6 4 4 8-8"/><path d="M15 7h6v6"/></svg>
+        Trends &amp; Comparison
+      </button>
+      <button class="nav-item" data-view="tsr">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M7 9h10M7 13h10M7 17h6"/></svg>
+        TSR Register
+        <span class="badge-count" id="nav-tsr-count" style="margin-left:auto;"></span>
+      </button>
+    </nav>
+
+    <div class="side-foot">
+      <button class="btn btn-ghost btn-sm" id="btn-load-sidebar" style="width:100%;justify-content:center;margin-bottom:8px;">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M12 3v12"/><path d="M7 10l5 5 5-5"/><path d="M4 20h16"/></svg>
+        Load / Refresh Data
+      </button>
+      <div class="data-status" id="data-status">No data loaded yet.</div>
+    </div>
+  </aside>
+
+  <div id="main">
+    <header id="topbar">
+      <div>
+        <h1 id="view-title">Program Overview</h1>
+        <div class="crumb" id="view-crumb">All portfolios · reporting snapshot</div>
+      </div>
+      <div class="topbar-controls">
+        <select id="month-select" title="Reporting month"></select>
+        <div class="toggle-pill" id="compare-toggle">
+          <button class="active" data-cmp="off">Actual</button>
+          <button data-cmp="on">vs Prior Month</button>
+        </div>
+        <button class="btn btn-outline" id="btn-present">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="13" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
+          Present
+        </button>
+        <button class="btn btn-outline no-print" id="btn-print">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9V3h12v6M6 18H4a1 1 0 01-1-1v-6a1 1 0 011-1h16a1 1 0 011 1v6a1 1 0 01-1 1h-2"/><rect x="6" y="14" width="12" height="7"/></svg>
+          Print / PDF
+        </button>
+        <button class="btn present-exit" id="btn-present-exit" style="display:none;background:#111;color:#fff;">Exit Present</button>
+      </div>
+    </header>
+
+    <main id="content">
+
+      <!-- OVERVIEW -->
+      <section class="view active" id="view-overview"></section>
+
+      <!-- PORTFOLIO DETAIL -->
+      <section class="view" id="view-portfolio"></section>
+
+      <!-- TRENDS -->
+      <section class="view" id="view-trends"></section>
+
+      <!-- TSR REGISTER (all portfolios) -->
+      <section class="view" id="view-tsr"></section>
+
+    </main>
+  </div>
+</div>
+
+<div class="modal-backdrop" id="modal-backdrop">
+  <div class="modal">
+    <div class="modal-head">
+      <h3 id="modal-title">Details</h3>
+      <button class="modal-close" id="modal-close">&times;</button>
+    </div>
+    <div class="modal-body" id="modal-body"></div>
+  </div>
+</div>
+
+<script src="assets/lib/xlsx.full.min.js"></script>
+<script src="assets/lib/chart.umd.min.js"></script>
+<script src="assets/js/app.js"></script>
+</body>
+</html>
