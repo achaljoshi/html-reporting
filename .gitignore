@@ -1,3 +1,13 @@
 .DS_Store
 *.tmp
 ~$*
+
+# Your real programme data and anything derived from client files — never commit
+ATS_Program/*
+!ATS_Program/README.txt
+local_private/
+# Generators that embed the real programme's wording / system names (kept local only)
+tools/build_kpi_templates.py
+tools/build_poap_templates.py
+tools/decode_poap_gantt.py
+tools/build_sample_portfolios.py
