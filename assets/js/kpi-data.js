@@ -119,10 +119,15 @@
 
     // ---- Weekly snapshots
     const snapsRaw = X.table(wb, "Weekly_Snapshot", ["Week Ending", "Planned Test Days", "Downtime Hours", "Overall RAG"]);
-    const snapMap = {};
+    const snapMap = {}, warnings = [];
+    const NUMCOLS = [["plannedtestdays", "Planned Test Days"], ["downtimehours", "Downtime Hours"], ["highriskrequirements", "High Risk – Requirements"], ["highrisktestcases", "High Risk – Test Cases"], ["highriskcoveredreqs", "High Risk – Covered Reqs"],
+      ["mediumriskrequirements", "Medium Risk – Requirements"], ["mediumrisktestcases", "Medium Risk – Test Cases"], ["mediumriskcoveredreqs", "Medium Risk – Covered Reqs"], ["lowriskrequirements", "Low Risk – Requirements"], ["lowrisktestcases", "Low Risk – Test Cases"], ["lowriskcoveredreqs", "Low Risk – Covered Reqs"],
+      ["automatabletestdatasetups", "Automatable Test Data Setups"], ["automatedtestdatasetups", "Automated Test Data Setups"], ["automatabletestcases", "Automatable Test Cases"], ["automatedtestcases", "Automated Test Cases"], ["csatscore", "CSAT Score"], ["csatresponses", "CSAT Responses"],
+      ["resourcesplanned", "Resources Planned"], ["resourcesactual", "Resources Actual"], ["cumulativespend", "Cumulative Spend"], ["forecastatcompletion", "Forecast at Completion"]];
     snapsRaw.forEach((r) => {
       const we = D.toIso(X.field(r, "weekending"));
       if (!we) return;
+      NUMCOLS.forEach(([k, label]) => { const raw = X.field(r, k); if (raw != null && String(raw).trim() !== "" && N.num(raw) == null) warnings.push({ sheet: "Weekly_Snapshot", msg: `W/E ${we}: "${String(raw).trim().slice(0, 20)}" in ${label} is not a number, so it was ignored.` }); });
       snapMap[we] = {
         weekEnding: we,
         testDays: N.num(X.field(r, "plannedtestdays")),
@@ -233,7 +238,7 @@
 
     return {
       kind: "kpi", config: { portfolio: cfg.portfolio, programme: cfg.programme, programName: cfg.programName, project: cfg.project, tsrRef: cfg.tsrRef, ptm: cfg.ptm, tm: cfg.tm, startDate: cfg.startDate, endDate: cfg.endDate, budget: cfg.budget, goLive: cfg.goLive, mode: cfg.mode },
-      th: cfg.th, snapshots, topicProgress, defects, tsrs, milestones, readiness, commentary, resourcing, demand, lessons, holidays,
+      th: cfg.th, warnings, snapshots, topicProgress, defects, tsrs, milestones, readiness, commentary, resourcing, demand, lessons, holidays,
     };
   };
 
@@ -728,7 +733,7 @@
   // ============================================================
   K.quality = function (data, today) {
     today = today || D.todayIso();
-    const w = [];
+    const w = (data.warnings || []).slice();
     data.defects.forEach((d) => {
       if ((d.status === "Closed" || d.status === "Resolved") && !d.resolved) w.push({ sheet: "Defect_Log", msg: `${d.id} is ${d.status} but has no Resolved Date — aging cannot be measured.` });
       if (d.resolved && d.resolved < d.raised) w.push({ sheet: "Defect_Log", msg: `${d.id}: Resolved Date is before Raised Date.` });

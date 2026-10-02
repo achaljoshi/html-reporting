@@ -319,11 +319,12 @@
       var tbcText = sd.tbc || ed.tbc || TBC_RE.test(rawStatusCells);
       if (tbcText && !status) status = "Dates TBC";
       var pct = parsePct(cell(row, "pct"));
+      var noId = !id, dupOf = "";
       if (!id) id = "ROW-" + (r + 1);
-      if (seen[id]) { var n = 2; while (seen[id + "~" + n]) n++; id = id + "~" + n; }
+      if (seen[id]) { dupOf = id; var n = 2; while (seen[id + "~" + n]) n++; id = id + "~" + n; }
       seen[id] = 1;
       out.push({
-        id: id, pillar: pillar, topic: topic, type: type, item: item || topic,
+        noId: noId, dupOf: dupOf, id: id, pillar: pillar, topic: topic, type: type, item: item || topic,
         start: dateOut(sd.dn), end: dateOut(ed.dn), baseStart: dateOut(bs.dn), baseEnd: dateOut(be.dn),
         pct: pct, status: status, rag: canonRag(cell(row, "rag")), owner: str(cell(row, "owner")),
         dependsOn: splitList(cell(row, "dep")), scope: str(cell(row, "scope")), notes: notes, row: r + 1
@@ -2385,6 +2386,26 @@
   // ---------------------------------------------------------------
   // Public API
   // ---------------------------------------------------------------
+  // data checks for the Data Quality page: problems in POAP_Plan / POAP_Milestones that otherwise draw silently wrong bars
+  ATSpoap.quality = function (data) {
+    var w = [];
+    if (!data) return w;
+    var plan = data.plan || [], ids = {}, dupes = {}, pillars = {};
+    ((data.config && data.config.pillars) || []).forEach(function (p) { pillars[p.name] = 1; });
+    plan.forEach(function (b) { ids[b.id] = 1; if (b.dupOf) dupes[b.dupOf] = (dupes[b.dupOf] || 1) + 1; });
+    Object.keys(dupes).forEach(function (id) { w.push({ sheet: "POAP_Plan", msg: "ID " + id + " is used on " + dupes[id] + " rows — the later rows were renamed " + id + "~2 … so dependencies point at the first one only. Give every bar its own ID." }); });
+    plan.forEach(function (b) { if (b.noId) w.push({ sheet: "POAP_Plan", msg: "Row " + b.row + " (" + String(b.item || "").slice(0, 40) + ") has no ID, so it cannot be used as a dependency." }); });
+    plan.forEach(function (b) {
+      var nm = b.id + " (" + String(b.item || "").slice(0, 40) + ")";
+      if (b.start && b.end && b.end < b.start) w.push({ sheet: "POAP_Plan", msg: nm + ": End date is before Start date." });
+      if ((!b.start || !b.end) && !/tbc|tbd/i.test(String(b.status || "") + " " + String(b.start || "") + " " + String(b.end || ""))) w.push({ sheet: "POAP_Plan", msg: nm + ": Start or End date is missing, so the bar is shown as Dates TBC." });
+      (b.dependsOn || []).forEach(function (d) { if (d && !ids[d]) w.push({ sheet: "POAP_Plan", msg: nm + ": depends on " + d + ", which is not in the plan." }); else if (d === b.id) w.push({ sheet: "POAP_Plan", msg: nm + ": depends on itself." }); });
+      if (b.pillar && Object.keys(pillars).length && !pillars[b.pillar]) w.push({ sheet: "POAP_Plan", msg: nm + ": pillar '" + b.pillar + "' is not listed in POAP_Config > PILLARS (it gets a default colour)." });
+      if (!b.topic) w.push({ sheet: "POAP_Plan", msg: nm + ": Topic is empty." });
+    });
+    (data.milestones || []).forEach(function (m) { if (!m.date) w.push({ sheet: "POAP_Milestones", msg: "Milestone '" + String(m.name || "").slice(0, 40) + "' has no date and is not drawn." }); });
+    return w;
+  };
   ATSpoap.detect = detect;
   ATSpoap.parse = parse;
   ATSpoap.mount = function (root) { mount(root); };

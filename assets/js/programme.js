@@ -56,6 +56,10 @@
     const mod = st.mode === "month" ? ATS.monthly : ATS.weekly;
     mod.state.key = st.key; mod.state.page = page || (st.mode === "month" ? "scorecard" : "glance");
     ATS.shell.go(st.mode === "month" ? "monthly" : "weekly");
+    if (page && mod.state.page !== page) {
+      const m = K.KPI_META.find((x) => x.key === page);
+      ATS.toast(`${m ? m.name : page} is a ${m ? m.cadence.toLowerCase() : "monthly"} measure and is not part of the Weekly Report — open the Monthly Council to see it.`);
+    }
   }
 
   // ---------------------------------------------------------------- views

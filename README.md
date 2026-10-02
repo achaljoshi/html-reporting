@@ -161,5 +161,6 @@ Everything committed to this repository is **fictional sample data** and blank t
 * Colours/branding → CSS variables at the top of `assets/css/style.css`.
 * Rebuild the embedded demo after changing files in `samples/`: `node tools/build_sample_js.js`.
 * Rebuild the Word/Markdown filling guide after editing its content: `NODE_PATH=$(npm root -g) node tools/build_filling_guide.js`.
+* Regression sweep: with the dashboard open, run `fetch("tools/qa_harness.js").then(r => r.text()).then(eval)` in the browser console, then `await QA.sweepAll()` — it opens every page for every portfolio and reports errors, broken text, overflow and empty charts.
 * The PowerPoint export sits on the client template. To change the look, rebuild the embedded theme from the new deck: `python3 tools/build_pptx_template.py "/path/to/Template.pptx"` (keeps masters, layouts, theme and logos; drops every slide, chart, note and personal metadata).
 * Workbook layouts are specified in `tools/SCHEMA_KPI_WORKBOOK.md` and `tools/SCHEMA_POAP_WORKBOOK.md`.

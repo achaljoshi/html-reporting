@@ -239,7 +239,7 @@
   ATS.on = (ev, fn) => { (listeners[ev] = listeners[ev] || []).push(fn); };
   ATS.emit = (ev, payload) => { (listeners[ev] || []).forEach((fn) => { try { fn(payload); } catch (e) { console.error(e); } }); };
 
-  ATS.VER = 5; // bump when parsed-data shape changes (invalidates cached data)
+  ATS.VER = 7; // bump when parsed-data shape changes (invalidates cached data)
   ATS.store = { portfolios: {}, order: [], current: null, kpi: null, poap: null, raid: null, meta: { source: "none", loadedAt: null, files: [] } };
 
   ATS.portfolioNames = () => ATS.store.order.slice();
@@ -401,17 +401,21 @@
     const groups = ATS.groupPortfolios(items);
     if (!groups.length) return { ok: false, report };
     let list = groups;
-    if (opts.merge && ATS.store.order.length) {
+    if (opts.merge && ATS.store.order.length && ATS.store.meta.source !== "sample") { // (demo data is never merged with real files)
       // "choose files": merge into what is already loaded (replace same-named portfolios, keep the rest)
       const keep = ATS.store.order.filter((n) => !groups.some((g) => g.name === n)).map((n) => Object.assign({ name: n }, ATS.store.portfolios[n]));
       list = keep.concat(groups);
     }
+    // flag workbooks that were read but not used (e.g. two weekly files for the same portfolio -> the most recently saved wins)
+    const usedSet = new Set(); groups.forEach((g) => (g._items || []).forEach((it) => usedSet.add(it)));
+    const unused = [];
+    items.forEach((it) => { if (usedSet.has(it)) return; const rep = report.find((x) => x.name === it.fileName && x.dir === it.dir && x.kind === it.kind); const why = it.sz > 0 ? "Not used — another " + (it.kind === "kpi" ? "weekly workbook" : it.kind.toUpperCase() + " file") + " was chosen for this portfolio (the most recently saved)" : "Blank template — ignored"; if (rep) rep.note = why; if (it.sz > 0) unused.push(it.fileName); });
     const files2 = [];
     groups.forEach((g) => (g._items || []).forEach((it) => files2.push({ name: (g.dir ? g.dir + "/" : "") + it.fileName, kind: it.kind, portfolio: g.name, note: (ATS[it.kind].describe ? ATS[it.kind].describe(it.parsed) : "") })));
     applyPortfolios(list, { source: "folder", label: label || "", loadedAt: new Date().toISOString(), files: files2 });
     persist();
     ATS.emit("data");
-    return { ok: true, report, portfolios: groups.map((g) => g.name) };
+    return { ok: true, report, unused, portfolios: groups.map((g) => g.name) };
   };
 
   // ---- directory handles (Chrome/Edge): remembered so "Refresh" needs no re-pick ----

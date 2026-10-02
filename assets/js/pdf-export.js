@@ -67,7 +67,7 @@
   async function sectionPdf(sec, kind, view) {
     const doc = newDoc();
     const env0 = sec._env;
-    if (!env0) throw new Error("Nothing to export yet");
+    if (!env0 || env0.data !== ATS.store.kpi) throw new Error("this portfolio has no weekly data yet, so there is nothing to export");
     const pages = env0.pages, keep = env0.state.page;
     const who = ATS.store.current || (env0.data.config && env0.data.config.programName) || "";
     const title = kind === "month" ? "Monthly Council" : "Weekly Report";
@@ -123,9 +123,10 @@
         finally { if (done && done.restore) done.restore(); }
       } else {
         const el = document.querySelector("#view-" + view);
-        saved = await singleViewPdf(el, "Programme Overview", "Programme_Overview_" + new Date().toISOString().slice(0, 10));
+        const last = ATS.programme && ATS.programme.last && ATS.programme.last();
+        saved = await singleViewPdf(el, "Programme Overview", "Programme_Overview_" + ((last && last.period && last.period.key) || new Date().toISOString().slice(0, 10)));
       }
       ATS.toast("Saved " + saved, "ok");
-    } catch (e) { console.error(e); ATS.toast("PDF export failed: " + e.message, "err"); }
+    } catch (e) { console.error(e); ATS.toast("PDF export failed: " + ((e && e.message) || "unexpected error — see the browser console"), "err"); }
   };
 })();

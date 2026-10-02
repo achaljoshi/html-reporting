@@ -212,7 +212,7 @@
       head = hdrRow(["ID", "Issue", "Rating", "Status", "Owner", "Reported", "Target"]); colW = [0.6, 4.3, 0.95, 1.6, 1.8, 1.1, 1.1];
       rows = open.slice(0, 9).map((i) => [t(i.id, { bold: true }), t(clip(i.title, 110)), t(i.rating), t(i.status), t(clip(i.owner, 24)), t(dt(i.reported)), t(dt(i.target))]);
     } else if (kind === "assumptions") {
-      const open = raid.assumptions.filter((a) => !a.archived && /unconfirmed/i.test(a.status)).sort((a, b) => ((a.due || "9999") < (b.due || "9999") ? -1 : 1));
+      const open = raid.assumptions.filter((a) => !a.archived && RA.assumptionState(a) === "Unconfirmed").sort((a, b) => ((a.due || "9999") < (b.due || "9999") ? -1 : 1));
       title = "Assumptions"; sub = `${open.length} unconfirmed · ${open.filter((a) => a.due && a.due < asOf).length} validation(s) overdue`;
       head = hdrRow(["ID", "Assumption", "Confidence", "Impact if incorrect", "Validation action", "Due"]); colW = [0.6, 3.6, 1.0, 2.7, 2.6, 1.0];
       rows = open.slice(0, 8).map((a) => [t(a.id, { bold: true }), t(clip(a.desc, 120)), t(a.confidence), t(clip(a.impact, 90), { fontSize: 9 }), t(clip(a.validation, 90), { fontSize: 9 }), t(dt(a.due))]);

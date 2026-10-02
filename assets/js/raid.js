@@ -102,7 +102,23 @@
   RA.isOpenRisk = (r) => !r.archived && lc(r.status) !== "closed";
   RA.isOpenIssue = (i) => !i.archived && !/^(resolved|closed)/.test(lc(i.status));
   RA.isOpenDep = (d) => !d.archived && lc(d.status) !== "closed";
+  // one definition of an assumption's state, shared by the overview counts and the Assumptions page
+  RA.assumptionState = (a) => { const k = lc(a.status); return /incorrect/.test(k) ? "Confirmed Incorrect" : /^(closed|withdrawn|superseded|invalid|no longer)/.test(k) ? "Closed" : /correct|confirmed|validated/.test(k) ? "Confirmed Correct" : "Unconfirmed"; };
   RA.isPendingDecision = (d) => !d.archived && /^(pending|proposed|draft|open|awaiting|tbc)/.test(lc(d.status));
+
+  // data checks for the Data Quality page
+  RA.quality = function (raid) {
+    const w = [];
+    if (!raid) return w;
+    [["Risks", raid.risks], ["Issues", raid.issues], ["Assumptions", raid.assumptions], ["Dependencies", raid.deps], ["Decisions", raid.decisions || []]].forEach(([sheet, rows]) => {
+      const seen = {}; rows.forEach((r) => { if (seen[r.id]) w.push({ sheet, msg: `ID ${r.id} appears on more than one row.` }); seen[r.id] = 1; });
+    });
+    raid.risks.filter((r) => !r.archived && RA.isOpenRisk(r) && !r.rating).forEach((r) => w.push({ sheet: "Risks", msg: `${r.id} has no usable Likelihood / Impact, so it is not rated or placed on the heat-map.` }));
+    raid.issues.filter((i) => !i.archived && /^(resolved|closed)/i.test(i.status) && !i.actual).forEach((i) => w.push({ sheet: "Issues", msg: `${i.id} is ${i.status} but has no Actual Resolution Date.` }));
+    raid.issues.filter((i) => !i.archived && RA.isOpenIssue(i) && !i.rating).forEach((i) => w.push({ sheet: "Issues", msg: `${i.id} has no usable Priority / Severity, so it is not rated.` }));
+    (raid.decisions || []).filter((d) => !d.archived && /^(approved|agreed|accepted|rejected)/i.test(d.status) && !d.decided).forEach((d) => w.push({ sheet: "Decisions", msg: `${d.id} is ${d.status} but has no Date Decided.` }));
+    return w;
+  };
 
   RA.summary = function (raid, asOf, period) {
     const risks = raid.risks.filter(RA.isOpenRisk), issues = raid.issues.filter(RA.isOpenIssue), deps = raid.deps.filter(RA.isOpenDep);
@@ -118,7 +134,7 @@
     const cutoff = D.add(asOf, 30);
     return {
       openRisks: risks.length, openIssues: issues.length, openDeps: deps.length,
-      unconfirmedAssumptions: raid.assumptions.filter((a) => !a.archived && /unconfirmed/i.test(a.status)).length,
+      unconfirmedAssumptions: raid.assumptions.filter((a) => !a.archived && RA.assumptionState(a) === "Unconfirmed").length,
       riskBands: rb, issueBands: ib, veryHigh: cnt("Very High"), high: cnt("High"), depByPriority: depP,
       newInPeriod: newIssues + newAss, closedInPeriod: closed, newIssues, newAssumptions: newAss,
       topRisks: risks.slice().sort((a, b) => (b.score || 0) - (a.score || 0)).slice(0, 6),

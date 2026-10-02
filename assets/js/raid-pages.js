@@ -131,24 +131,24 @@
     if (!env.raid) return missing(env, "assumptions", "Assumptions", NO_RAID);
     const asOf = env.all.asOf, p = env.prefix + "as-";
     const all = env.raid.assumptions.filter((a) => !a.archived);
-    const stOf = (a) => (/incorrect/i.test(a.status) ? "Confirmed Incorrect" : /correct|confirmed/i.test(a.status) ? "Confirmed Correct" : "Unconfirmed");
+    const stOf = (a) => RA.assumptionState(a);
     const confOf = (a) => (/^h/i.test(a.confidence) ? "High" : /^m/i.test(a.confidence) ? "Medium" : /^l/i.test(a.confidence) ? "Low" : "Not rated");
-    const unconf = all.filter((a) => stOf(a) === "Unconfirmed"), ok = all.filter((a) => stOf(a) === "Confirmed Correct"), bad = all.filter((a) => stOf(a) === "Confirmed Incorrect");
+    const unconf = all.filter((a) => stOf(a) === "Unconfirmed"), ok = all.filter((a) => stOf(a) === "Confirmed Correct"), bad = all.filter((a) => stOf(a) === "Confirmed Incorrect"), shut = all.filter((a) => stOf(a) === "Closed");
     const overdue = unconf.filter((a) => late(a.due, asOf)), soon = unconf.filter((a) => a.due && a.due >= asOf && a.due <= D.add(asOf, 30));
     const lowConf = unconf.filter((a) => confOf(a) === "Low");
     const tbl = (items) => U.table(["ID", "Assumption", "Confidence", "Status", "Impact if wrong", "Validation action", "Due", "Raised by"], items.map((a) => [`<b>${esc(a.id)}</b>`, esc(trunc(a.desc, 120)), chip(confOf(a), confOf(a) === "Low" ? "red" : confOf(a) === "Medium" ? "amber" : confOf(a) === "High" ? "green" : "grey"), statusChip(stOf(a)), `<span class="sx-dim">${esc(trunc(a.impact, 110))}</span>`, `<span class="sx-dim">${esc(trunc(a.validation, 110))}</span>`, `<span style="${late(a.due, asOf) && stOf(a) === "Unconfirmed" ? "color:#b42318;font-weight:700" : ""}">${dfmt(a.due)}</span>`, esc(trunc(a.by, 22))]), { wrap: true });
     const sorted = unconf.slice().sort((a, b) => ((a.due || "9999") < (b.due || "9999") ? -1 : 1));
     const allTbl = () => `<div class="sx-ctitle">Assumptions still to validate <span class="sx-csub">· ${unconf.length}, earliest validation date first</span></div>${unconf.length ? tbl(sorted) : '<div class="sx-empty-note">Every assumption has been confirmed.</div>'}`;
-    const rows = ["Low", "Medium", "High", "Not rated"].map((k) => ({ key: k, label: k + " confidence" })), cols = ["Unconfirmed", "Confirmed Correct", "Confirmed Incorrect"].map((k) => ({ key: k, label: k }));
-    const colorOf = (r, c) => (c.key === "Confirmed Correct" ? "#9ad8b0" : c.key === "Confirmed Incorrect" ? "#ef5b5b" : r.key === "Low" ? "#ff9d5c" : r.key === "Medium" ? "#ffd66b" : "#c9e58f");
+    const rows = ["Low", "Medium", "High", "Not rated"].map((k) => ({ key: k, label: k + " confidence" })), cols = ["Unconfirmed", "Confirmed Correct", "Confirmed Incorrect"].concat(shut.length ? ["Closed"] : []).map((k) => ({ key: k, label: k }));
+    const colorOf = (r, c) => (c.key === "Closed" ? "#d0d5dd" : c.key === "Confirmed Correct" ? "#9ad8b0" : c.key === "Confirmed Incorrect" ? "#ef5b5b" : r.key === "Low" ? "#ff9d5c" : r.key === "Medium" ? "#ffd66b" : "#c9e58f");
     const cellItems = (r, c) => all.filter((a) => confOf(a) === r.key && stOf(a) === c.key);
     const tb = [["Overdue", (a) => late(a.due, asOf), "#ef5b5b"], ["Next 7 days", (a) => a.due && a.due >= asOf && a.due <= D.add(asOf, 7), "#f5a524"], ["8–30 days", (a) => a.due && a.due > D.add(asOf, 7) && a.due <= D.add(asOf, 30), "#ffd66b"], ["31–60 days", (a) => a.due && a.due > D.add(asOf, 30) && a.due <= D.add(asOf, 60), "#9ad8b0"], ["Later", (a) => a.due && a.due > D.add(asOf, 60), "#9ad8b0"], ["No date", (a) => !a.due, "#d0d5dd"]];
     const left = `<div class="sx-stats">${U.stat(all.length, "Assumptions")}${U.stat(unconf.length, "Unconfirmed")}${U.stat(ok.length, "Confirmed correct")}${U.stat(bad.length, "Confirmed incorrect")}${U.stat(overdue.length, "Validation overdue")}${U.stat(soon.length, "Due in 30 days")}</div>
       <div class="sx-grid2"><div><div class="sx-ctitle">Confidence × status <span class="sx-csub">· click a cell</span></div><div>${matrix({ id: p + "mxg", rows, cols, rowW: 120, corner: "Confidence ↓ / Status →", cell: (r, c) => ({ items: cellItems(r, c), color: colorOf(r, c) }) })}</div></div>
       <div><div class="sx-ctitle">When validation is due <span class="sx-csub">· unconfirmed only</span></div>${bars(tb.map(([l, fn, col]) => ({ label: l, n: unconf.filter(fn).length, color: col })))}
-        <div class="sx-ctitle" style="margin-top:14px">By status</div>${bars([{ label: "Unconfirmed", n: unconf.length, color: "#f5a524" }, { label: "Correct", n: ok.length, color: "#22c55e" }, { label: "Incorrect", n: bad.length, color: "#ef5b5b" }])}</div></div>
+        <div class="sx-ctitle" style="margin-top:14px">By status</div>${bars([{ label: "Unconfirmed", n: unconf.length, color: "#f5a524" }, { label: "Correct", n: ok.length, color: "#22c55e" }, { label: "Incorrect", n: bad.length, color: "#ef5b5b" }].concat(shut.length ? [{ label: "Closed", n: shut.length, color: "#98a2b3" }] : []))}</div></div>
       <div id="${p}box">${allTbl()}</div>
-      ${ok.length + bad.length ? `<details class="sx-more"><summary>Confirmed assumptions (${ok.length + bad.length})</summary>${tbl(ok.concat(bad))}</details>` : ""}`;
+      ${ok.length + bad.length + shut.length ? `<details class="sx-more"><summary>Confirmed or closed assumptions (${ok.length + bad.length + shut.length})</summary>${tbl(ok.concat(bad, shut))}</details>` : ""}`;
     const right = pan(
       [`${all.length} assumption(s): ${unconf.length} unconfirmed, ${ok.length} confirmed correct, ${bad.length} confirmed incorrect.`, soon.length ? `${soon.length} to be validated in the next 30 days.` : "", ].filter(Boolean),
       (bad.length ? [`${bad.length} assumption(s) proved incorrect (${list(bad, 4)}) — check the impact and re-plan.`] : []).concat(overdue.length ? [`${overdue.length} validation(s) overdue: ${list(overdue, 4)}.`] : []).concat(lowConf.length ? [`${lowConf.length} unconfirmed assumption(s) have Low confidence: ${list(lowConf, 4)}.`] : []),

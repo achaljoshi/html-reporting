@@ -15,7 +15,9 @@
     opts = opts || {};
     const res = env.all.byKey[key];
     const fn = ATS.kpiPages[key];
-    const body = fn(res, env);
+    let body;
+    try { body = res.empty ? { left: U.noData(res.position && res.position !== "No data" ? res.position : "No data for " + res.name), draw() {} } : fn(res, env); }
+    catch (e) { console.error(e); body = { left: `<div class="sx-callout red">This page could not be built from the data: ${esc(e.message)}</div>`, draw() {} }; }
     const quarter = res.cadence === "Quarterly" && env.period.type === "month" ? ` · quarter to date (${D.quarterOf(env.period.end).label})` : "";
     const sub = `${esc(env.period.label)}${quarter} · <b>${esc(res.position)}</b>${res.positionOverridden ? " (as written in Commentary)" : ""}`;
     const foot = `Source: ${esc(env.data.config.programName)} · data as of ${D.fmt(env.all.asOf)}${ATS.isSample() ? ' · <b style="color:#b54708">SAMPLE DATA</b>' : ""}`;
@@ -108,7 +110,7 @@
   };
 
   ATS.pages.checks = function (env) {
-    const q = K.quality(env.data, env.all.asOf);
+    const q = K.quality(env.data, env.all.asOf).concat(ATS.poap && ATS.poap.quality && ATS.store.poap ? ATS.poap.quality(ATS.store.poap) : []).concat(ATS.raid && ATS.raid.quality && env.raid ? ATS.raid.quality(env.raid) : []);
     const d = env.data;
     const meta = ATS.store.meta;
     const files = (meta.files || []).map((f) => `<span class="chip green">${esc(f.kind.toUpperCase())}</span> ${esc(f.name)} <span class="sx-dim">— ${esc(f.note || "")}</span>`).join("<br>");
@@ -201,8 +203,8 @@
       let out;
       try { out = page.render(env); } catch (e) { console.error(e); out = { html: `<div class="sx-callout red">This page failed to render: ${esc(e.message)}</div>`, draw() {} }; }
       stage.innerHTML = Array.isArray(out) ? out.map((o) => o.html).join('<div style="height:18px"></div>') : out.html;
-      (Array.isArray(out) ? out : [out]).forEach((o) => o.draw && o.draw(stage));
-      U.wireExports(stage, cfg.id + "-" + state.page + "-" + state.key);
+      (Array.isArray(out) ? out : [out]).forEach((o) => { try { o.draw && o.draw(stage); } catch (e) { console.error(e); stage.insertAdjacentHTML("beforeend", `<div class="sx-callout red" style="margin-top:12px">A chart on this page could not be drawn: ${esc(e.message)}</div>`); } });
+      U.wireExports(stage, (String(store.current || "").replace(/[^A-Za-z0-9]+/g, "_").replace(/^_|_$/g, "") || "ats") + "-" + cfg.id + "-" + state.page + "-" + state.key);
       env.pages = pages;
       sec._env = env;
     };

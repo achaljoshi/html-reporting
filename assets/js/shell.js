@@ -50,6 +50,11 @@
     if (!st.poap) {
       el.innerHTML = `<div class="card card-pad sx-load-card"><div class="sx-eyebrow">POAP — Plan on a Page</div><h2 style="margin:6px 0 8px">No POAP for ${esc(st.current)}</h2>
         <p class="text-sm text-sub" style="line-height:1.6;margin:0">Put this portfolio's <b>ATS_POAP.xlsx</b> (copy of <code>templates/ATS_POAP_Template.xlsx</code>) in the same folder as its weekly workbook, then click <b>Refresh data</b>.</p></div>`;
+      const withPoap = ATS.portfolioNames().filter((n) => ATS.store.portfolios[n] && ATS.store.portfolios[n].poap);
+      if (withPoap.length) {
+        el.querySelector(".sx-load-card").insertAdjacentHTML("beforeend", `<p class="text-sm text-sub" style="margin:14px 0 6px">Portfolios that do have a POAP:</p><div class="row">${withPoap.map((n) => `<button class="btn btn-outline btn-sm" data-pf="${esc(n)}">${esc(n)}</button>`).join("")}</div>`);
+        el.querySelectorAll("[data-pf]").forEach((b) => (b.onclick = () => ATS.setPortfolio(b.dataset.pf)));
+      }
       poapMounted = false; return;
     }
     if (!poapMounted || poapFor !== st.current || !el.querySelector("#poap-root")) {
@@ -99,6 +104,7 @@
     }
     const n = (res.portfolios || []).length;
     ATS.toast(`Loaded ${n} portfolio${n === 1 ? "" : "s"}: ${res.portfolios.slice(0, 4).join(", ")}${n > 4 ? "…" : ""}`, "ok");
+    if (res.unused && res.unused.length) setTimeout(() => ATS.toast(`${res.unused.length} workbook(s) were not used because another file was chosen for the same portfolio (the most recently saved): ${res.unused.slice(0, 3).join(", ")}${res.unused.length > 3 ? "…" : ""}`), 1800);
   };
 
   // ------------------------------------------------------------------ boot

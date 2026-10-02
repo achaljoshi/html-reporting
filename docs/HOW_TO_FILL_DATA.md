@@ -223,7 +223,7 @@ The dashboard gives each sheet its own page under **Risks, Issues & Lessons** (R
 
 1. Open `index.html`. Click **Load program folder** and choose `ATS_Program` (first time), or **Refresh data** after later edits.
 2. Use the **Portfolio** dropdown (top bar) to switch between portfolios, or **Programme Overview** to see them all.
-3. Open **Appendix → Data Quality** in the Monthly Council or Weekly Report. It lists problems such as a closed defect without a Resolved Date, a TSR returned before it was received, or a week ending that is not a Friday.
+3. Open **Appendix → Data Quality** in the Monthly Council or Weekly Report. It lists problems such as a closed defect without a Resolved Date, a TSR returned before it was received, a week ending that is not a Friday, text typed into a number cell, a POAP bar that ends before it starts or depends on an ID that does not exist, and RAID items with duplicate IDs or no rating.
 4. Use **Export PowerPoint** for slides (built on the client PowerPoint theme; charts and tables stay editable), **Export PDF** for a document you can read or print (the Monthly Council and Weekly Report export every page of the pack), or **Copy as picture** on any single page.
 
 
