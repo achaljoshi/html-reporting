@@ -840,7 +840,8 @@
     today: '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg>',
     expand: '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 9l5-5 5 5M7 15l5 5 5-5"/></svg>',
     collapse: '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 4l5 5 5-5M7 20l5-5 5 5"/></svg>',
-    print: '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9V3h12v6M6 18H4v-7h16v7h-2M7 14h10v7H7z"/></svg>'
+    print: '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9V3h12v6M6 18H4v-7h16v7h-2M7 14h10v7H7z"/></svg>',
+    pdf: '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H7a2 2 0 00-2 2v14a2 2 0 002 2h10a2 2 0 002-2V8z"/><path d="M14 3v5h5M12 11v6M9 14l3 3 3-3"/></svg>',
   };
   function emptyState(title, text) {
     return '<div class="poap-empty"><div class="poap-empty-ic"><svg viewBox="0 0 24 24" width="34" height="34" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="3"/><path d="M3 9h18M8 4v5M16 4v5M7 14h4M13 14h4"/></svg></div><h3>' + esc(title) + "</h3><p>" + esc(text) + "</p></div>";
@@ -868,8 +869,8 @@
     RM.btnExp.addEventListener("click", function () { rmSetAll(false); });
     RM.btnCol = h("button", { type: "button", class: "btn btn-outline btn-sm", title: "Collapse all topic lanes", html: ICON.collapse + "Collapse" });
     RM.btnCol.addEventListener("click", function () { rmSetAll(true); });
-    RM.btnPrint = h("button", { type: "button", class: "btn btn-outline btn-sm poap-noprint", title: "Print roadmap", html: ICON.print + "Print" });
-    RM.btnPrint.addEventListener("click", function () { window.print(); });
+    RM.btnPrint = h("button", { type: "button", class: "btn btn-outline btn-sm poap-noprint", title: "Save the roadmap as a PDF", html: ICON.pdf + "Export PDF" });
+    RM.btnPrint.addEventListener("click", function () { if (window.ATS && ATS.exportPdf) ATS.exportPdf(); });
     RM.count = h("div", { class: "poap-rm-count" });
     var grpA = h("div", { class: "poap-tb-grp" }, [RM.zoomSeg, RM.btnFit, RM.btnToday]);
     var grpB = h("div", { class: "poap-tb-grp" }, [RM.btnExp, RM.btnCol, RM.btnPrint]);
@@ -1646,8 +1647,8 @@
     PO.densSeg = segmented([{ key: "comfortable", label: "Comfortable", title: "One row per topic" }, { key: "compact", label: "Compact", title: "Tighter rows" }, { key: "summary", label: "Pillars", title: "One-screen summary: one row per pillar" }], S.dens, function (k) { S.dens = k; S.views.poap.render(); }, "Row density");
     var grpA = h("div", { class: "poap-tb-grp" }, [PO.densSeg]);
     PO.count = h("div", { class: "poap-rm-count" });
-    var pr = h("button", { type: "button", class: "btn btn-outline btn-sm poap-noprint", title: "Print one-page poster", html: ICON.print + "Print poster" });
-    pr.addEventListener("click", function () { window.print(); });
+    var pr = h("button", { type: "button", class: "btn btn-outline btn-sm poap-noprint", title: "Save the one-page poster as a PDF", html: ICON.pdf + "Export PDF" });
+    pr.addEventListener("click", function () { if (window.ATS && ATS.exportPdf) ATS.exportPdf(); });
     tb.appendChild(grpA); tb.appendChild(h("div", { class: "poap-tb-grp" }, [pr])); tb.appendChild(PO.count);
     el.appendChild(tb);
     var grid = h("div", { class: "poap-po-grid" });

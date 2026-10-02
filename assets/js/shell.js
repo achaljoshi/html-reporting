@@ -17,6 +17,8 @@
 
   const shell = (ATS.shell = {});
 
+  shell.currentView = () => current;
+
   shell.go = function (id) {
     if (!SECTIONS[id]) id = "programme";
     current = id;
@@ -104,9 +106,9 @@
     $("#btn-load-program").onclick = () => shell.load("folder");
     $("#btn-refresh-program").onclick = () => shell.load("refresh");
     $("#portfolio-select").onchange = (e) => ATS.setPortfolio(e.target.value);
-    $("#btn-present").onclick = () => { document.body.classList.add("present-mode"); $("#btn-present").style.display = "none"; $("#btn-print").style.display = "none"; $("#btn-present-exit").style.display = "inline-flex"; };
-    $("#btn-present-exit").onclick = () => { document.body.classList.remove("present-mode"); $("#btn-present").style.display = ""; $("#btn-print").style.display = ""; $("#btn-present-exit").style.display = "none"; };
-    $("#btn-print").onclick = () => window.print();
+    $("#btn-present").onclick = () => { document.body.classList.add("present-mode"); $("#btn-present").style.display = "none"; $("#btn-pdf").style.display = "none"; $("#btn-present-exit").style.display = "inline-flex"; };
+    $("#btn-present-exit").onclick = () => { document.body.classList.remove("present-mode"); $("#btn-present").style.display = ""; $("#btn-pdf").style.display = ""; $("#btn-present-exit").style.display = "none"; };
+    $("#btn-pdf").onclick = () => (ATS.exportPdf ? ATS.exportPdf() : ATS.toast("PDF export not available", "err"));
     ATS.on("data", () => { poapMounted = false; shell.render(); });
     ATS.on("portfolio", () => { poapMounted = false; shell.render(); });
 

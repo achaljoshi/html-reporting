@@ -18,7 +18,7 @@ The **Portfolio** dropdown (top bar) switches Monthly Council / Weekly Report / 
 |---|---|
 | **Learn how to fill the data** (step by step, every column explained) | [`docs/HOW_TO_FILL_DATA.md`](docs/HOW_TO_FILL_DATA.md) — a Word copy to circulate to portfolio teams is in [`docs/ATS_Data_Filling_Guide.docx`](docs/ATS_Data_Filling_Guide.docx) |
 | **See a finished, filled example** | `samples/ATS_Program_SAMPLE/Self Assessment/` (weekly workbook + POAP + RAID log — all fictional) and four more portfolios beside it |
-| **Start my own portfolio** | copy `templates/ATS_Weekly_Data_Template.xlsx` (and `ATS_POAP_Template.xlsx`) — each has a built-in *Guide* sheet and an example row on every sheet |
+| **Start my own portfolio** | copy `templates/ATS_Weekly_Data_Template.xlsx` (and `ATS_POAP_Template.xlsx`, `ATS_RAID_Log_Template.xlsx`) — each has a built-in guide and the weekly one has an example row on every sheet |
 | **Present** | open `index.html` |
 
 ## 1. Open it
@@ -37,7 +37,7 @@ ATS_Program/                          ← the folder you load in the dashboard
 ├── Customs Declaration Service/
 │   ├── ATS_Weekly_Data.xlsx
 │   ├── ATS_POAP.xlsx                 ← optional: that portfolio's plan
-│   └── ATS - Test RAID Log.xlsx      ← optional: that portfolio's RAID log (existing format, unchanged)
+│   └── ATS_RAID_Log.xlsx             ← optional: that portfolio's RAID log (Risks, Issues, Assumptions, Dependencies, Decisions)
 └── …one subfolder per portfolio
 ```
 * **A portfolio = one weekly workbook.** Its name comes from **Config → Portfolio Name** (set it once; it must be unique).
@@ -50,7 +50,7 @@ ATS_Program/                          ← the folder you load in the dashboard
 2. **Every Friday** add: one row in `Weekly_Snapshot`; one row per topic in `Topic_Progress`; add/update `Defect_Log`, `TSR_Log`, `Milestones` as things happen; `Readiness` (optional); `Commentary` (optional — your own wording).
 3. **You (programme lead):** collect the folders into `ATS_Program/`, open the dashboard, click **Load program folder** (first time) or **Refresh data** (afterwards — Chrome/Edge remember the folder; click *Allow* once per session).
 4. Use **Programme Overview** for the all-portfolio picture, or pick a portfolio and open **Weekly Report** / **Monthly Council** / **POAP**.
-5. **Export PowerPoint** (Programme Overview, Monthly Council, Weekly Report) or **Copy as picture** on any page.
+5. **Export PowerPoint** (Programme Overview, Monthly Council, Weekly Report) — built on the client PowerPoint theme, with editable charts and tables — or **Export PDF** (top bar) for the whole pack, or **Copy as picture** on any page. To print, open the PDF and print that.
 
 > **History matters:** every row is dated, so any week or month can be reopened later, trends build themselves, and week-over-week / month-over-month deltas are automatic.
 
@@ -131,11 +131,12 @@ ATS_Dashboard/
 ├── docs/                           ← HOW_TO_FILL_DATA.md + ATS_Data_Filling_Guide.docx
 ├── templates/                      ← blank templates to copy for each portfolio team
 │   ├── ATS_Weekly_Data_Template.xlsx
-│   └── ATS_POAP_Template.xlsx
+│   ├── ATS_POAP_Template.xlsx
+│   └── ATS_RAID_Log_Template.xlsx   ← Risks / Issues / Assumptions / Dependencies / Decisions
 ├── samples/ATS_Program_SAMPLE/     ← five fictional portfolios used as the built-in demo
 │   └── Self Assessment/            ←   (also has a sample POAP + RAID log)
 ├── ATS_Program/                    ← put YOUR portfolio folders here (see section 2; git-ignored)
-├── assets/                         ← code + bundled libraries (SheetJS, Chart.js, PptxGenJS, html2canvas) — all offline
+├── assets/                         ← code + bundled libraries (SheetJS, Chart.js, PptxGenJS, html2canvas, jsPDF) + `pptx-template.js` (the client PowerPoint theme) — all offline
 ├── tools/                          ← schema docs, sample builder, guide builder, QA server
 ├── presentation/                   ← the intro deck
 └── archive/legacy_portfolio_explorer/   ← the first multi-portfolio explorer (superseded)
@@ -153,11 +154,12 @@ Everything committed to this repository is **fictional sample data** and blank t
 | POAP / RAID not shown for a portfolio | put the file in that portfolio's folder (or include the portfolio name in the file name) |
 | A KPI shows grey / "No data" | the sheet behind it has no rows up to that period |
 | Refresh asks for the folder again | normal in Firefox/Safari; Chrome/Edge ask to *Allow* once per session |
-| Export PowerPoint does nothing | the browser blocked the download — allow downloads for the page |
+| Export PowerPoint / Export PDF does nothing | the browser blocked the download — allow downloads for the page |
 
 ## 10. Customising
 * Thresholds, budget, dates → `Config`. Topics / dropdown values → `Lists`.
 * Colours/branding → CSS variables at the top of `assets/css/style.css`.
 * Rebuild the embedded demo after changing files in `samples/`: `node tools/build_sample_js.js`.
 * Rebuild the Word/Markdown filling guide after editing its content: `NODE_PATH=$(npm root -g) node tools/build_filling_guide.js`.
+* The PowerPoint export sits on the client template. To change the look, rebuild the embedded theme from the new deck: `python3 tools/build_pptx_template.py "/path/to/Template.pptx"` (keeps masters, layouts, theme and logos; drops every slide, chart, note and personal metadata).
 * Workbook layouts are specified in `tools/SCHEMA_KPI_WORKBOOK.md` and `tools/SCHEMA_POAP_WORKBOOK.md`.

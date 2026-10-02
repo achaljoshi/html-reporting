@@ -643,7 +643,9 @@
     r.position = `${s.openRisks} risks · ${s.openIssues} issues · ${s.openDeps} dependencies open`;
     r.metric = { value: s.veryHigh + s.high, text: String(s.veryHigh + s.high), label: "High / Very High items", better: "down", fmt: "int" };
     r.detail = s;
-    r.highlights.push(`${s.openRisks} open risks (${s.riskBands.map((b) => b.n + " " + b.label).filter((x, i) => s.riskBands[i].n).join(", ") || "none rated"}); ${s.openIssues} open issues; ${s.openDeps} open dependencies; ${s.unconfirmedAssumptions} unconfirmed assumptions.`);
+    r.highlights.push(`${s.openRisks} open risks (${s.riskBands.map((b) => b.n + " " + b.label).filter((x, i) => s.riskBands[i].n).join(", ") || "none rated"}); ${s.openIssues} open issues; ${s.openDeps} open dependencies; ${s.unconfirmedAssumptions} unconfirmed assumptions${s.decisionsTotal ? `; ${s.decisionsPending} decision(s) pending` : ""}.`);
+    if (s.decisionsInPeriod) r.highlights.push(`${s.decisionsInPeriod} decision(s) taken in the period.`);
+    if (s.decisionsPending) r.actions.push(`${s.decisionsPending} decision(s) awaiting approval: ${s.pendingDecisions.slice(0, 2).map((d) => d.id).join(", ")}${s.decisionsPending > 2 ? "…" : ""}.`);
     if (s.newInPeriod) r.highlights.push(`${s.newInPeriod} RAID item(s) logged and ${s.closedInPeriod} closed/resolved in the period.`);
     if (s.high || s.veryHigh) r.concern.push(`${s.veryHigh + s.high} open risk/issue item(s) rated High or Very High need daily/immediate attention.`);
     r.exec = r.rag === "Green" ? "No High or Very High rated risks or issues are open; the RAID log is under control." : "High-rated risks/issues are open and require active management.";

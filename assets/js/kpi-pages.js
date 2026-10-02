@@ -290,12 +290,13 @@
   P.raid = function (res, ctx) {
     const s = res.detail, p = ctx.prefix;
     if (res.empty) return { left: U.noData("RAID log not loaded"), draw() {} };
-    const left = `<div class="sx-stats">${U.stat(s.openRisks, "Open risks")}${U.stat(s.openIssues, "Open issues")}${U.stat(s.openDeps, "Open dependencies")}${U.stat(s.unconfirmedAssumptions, "Unconfirmed assumptions")}${U.stat(s.veryHigh + s.high, "High / Very High")}</div>
+    const left = `<div class="sx-stats">${U.stat(s.openRisks, "Open risks")}${U.stat(s.openIssues, "Open issues")}${U.stat(s.openDeps, "Open dependencies")}${U.stat(s.unconfirmedAssumptions, "Unconfirmed assumptions")}${U.stat(s.decisionsPending, "Pending decisions")}${U.stat(s.veryHigh + s.high, "High / Very High")}</div>
       <div class="sx-grid2"><div><div class="sx-ctitle">Risk heat-map <span class="sx-csub">· open risks, click a cell</span></div><div id="${p}raid-heat">${ATS.raid.heatmap(s.risksOpen)}</div></div>
       <div><div class="sx-ctitle">Open risks by rating</div>${ATS.raid.bandBars(s.riskBands)}<div class="sx-ctitle" style="margin-top:14px">Open issues by rating</div>${ATS.raid.bandBars(s.issueBands)}</div></div>
       <div id="${p}raid-list"><div class="sx-ctitle">Top risks</div>${ATS.raid.riskTable(s.topRisks)}</div>
       <div><div class="sx-ctitle">Open issues</div>${ATS.raid.issueTable(s.topIssues)}</div>
-      <div><div class="sx-ctitle">Dependencies needed in the next 30 days</div>${ATS.raid.depTable(s.depsDue.slice(0, 8))}</div>`;
+      <div><div class="sx-ctitle">Dependencies needed in the next 30 days</div>${ATS.raid.depTable(s.depsDue.slice(0, 8))}</div>
+      <div><div class="sx-ctitle">Decisions <span class="sx-csub">· ${s.decisionsPending} pending · ${s.decisionsInPeriod} taken in this period · ${s.decisionsTotal} logged</span></div>${ATS.raid.decisionTable(s.pendingDecisions.concat(s.recentDecisions).slice(0, 8), { why: true })}</div>`;
     return {
       left,
       draw(root) {

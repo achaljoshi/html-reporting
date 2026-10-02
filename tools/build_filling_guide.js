@@ -29,6 +29,7 @@ h1('2. What you get in the box');
 table(['File / folder', 'What it is', 'Who uses it'], [
   ['`templates/ATS_Weekly_Data_Template.xlsx`', 'Blank weekly workbook with an example row on every sheet and a built-in **Guide** sheet.', 'Every portfolio team'],
   ['`templates/ATS_POAP_Template.xlsx`', 'Blank plan-on-a-page workbook (plan bars, milestones, integration flows).', 'Portfolios that want a roadmap'],
+  ['`templates/ATS_RAID_Log_Template.xlsx`', 'Blank RAID log with **Risks, Issues, Assumptions, Dependencies and Decisions** sheets, dropdowns and a user guide.', 'Portfolios that keep a RAID log'],
   ['`samples/ATS_Program_SAMPLE/`', 'Five fictional portfolios (Self Assessment, PAYE, VAT, Customs Declaration Service, Child Benefit). Self Assessment also has a POAP and a RAID log.', 'Everyone — to see how a filled workbook looks'],
   ['`ATS_Program/`', 'Your real data folder. Put one subfolder per portfolio here.', 'Programme lead'],
   ['`index.html`', 'The dashboard. Double-click to open (Chrome or Edge).', 'Everyone'],
@@ -42,7 +43,7 @@ ol([
   'Review the thresholds further down Config (SLA days, downtime limits, coverage targets). The defaults are sensible; change them only if your contract says otherwise.',
   'On the **Lists** sheet, replace the example **Topic** values with your portfolio\'s own topics / releases / workstreams (they feed the dropdowns).',
   '**Delete the grey EXAMPLE rows** on each data sheet (the row whose Notes column says "EXAMPLE – delete this row"). Rows marked EXAMPLE are ignored by the dashboard, but delete them anyway.',
-  'Optional: copy `templates/ATS_POAP_Template.xlsx` as `ATS_POAP.xlsx` and your RAID log into the same folder.',
+  'Optional: copy `templates/ATS_POAP_Template.xlsx` as `ATS_POAP.xlsx` and `templates/ATS_RAID_Log_Template.xlsx` as `ATS_RAID_Log.xlsx` into the same folder (or drop in your existing RAID file).',
 ]);
 code('ATS_Program/\n├── Self Assessment/\n│   ├── ATS_Weekly_Data.xlsx      <- required\n│   ├── ATS_POAP.xlsx             <- optional\n│   └── ATS_RAID_Log.xlsx         <- optional (your existing RAID format)\n├── PAYE/\n│   └── ATS_Weekly_Data.xlsx\n└── VAT/\n    └── ATS_Weekly_Data.xlsx');
 note('Prefer one flat folder? Name the files `ATS_Weekly_Data - <Portfolio Name>.xlsx`. A POAP or RAID file is matched to its portfolio when the portfolio name appears in its file name.');
@@ -173,14 +174,22 @@ ul([
 ]);
 
 h1('7. RAID log');
-p('Keep using your existing RAID log exactly as it is — no changes. Put it in the portfolio\'s folder. The dashboard reads the **Risks, Issues, Assumptions and Dependencies** sheets by their header names and shows open items by rating (Very Low / Low / Medium / High / Very High), a likelihood × impact heat-map and the items needing attention. **RAID Health** is Red when a Very High item is open and Amber when a High item is open. A closed risk or a resolved issue drops out automatically.');
+p('Start a new log from `templates/ATS_RAID_Log_Template.xlsx` (or keep using your existing RAID file — the dashboard finds columns by their header names). Put it in the portfolio\'s folder as `ATS_RAID_Log.xlsx`. It has five log sheets, each with the header on row 10 and data from row 11.');
+table(['Sheet', 'One row per', 'Key columns'], [
+  ['Risks', 'risk', 'Summary Title, Likelihood, Impact (score = L × I → Very Low … Very High), Status (Open / Mitigated / Closed), Mitigation, Owner, Review Date'],
+  ['Issues', 'issue', 'Summary Title, Priority, Severity, Status (Open / Resolution in progress / Resolved / Closed), Target and Actual Resolution Date'],
+  ['Assumptions', 'assumption', 'Description, Confidence Level, Validation Action, Validation Due Date, Status (Unconfirmed / Confirmed Correct / Confirmed Incorrect)'],
+  ['Dependencies', 'dependency', 'Description, Dependency For / From, Type, Date Required, Priority, Status (Open / Closed)'],
+  ['**Decisions**', 'decision', 'Summary Title, Decision / Description, Category, Decision Maker / Forum, **Date Decided**, Rationale, Impact of Decision, **Status (Pending / Approved / Rejected / Superseded)**, Owner, Review Date, Linked Risk / Issue ID'],
+], [1800, 1400, 6438]);
+p('The dashboard shows open items by rating, a likelihood × impact heat-map, the dependencies due in the next 30 days and the **Decisions** table (pending first, then the most recent). Decisions marked *Pending* count as open and appear under "Actions Underway"; decisions whose *Date Decided* falls in the month or week are counted in the highlights. An old RAID file without a Decisions sheet is fine — that part simply shows "No decisions logged". **RAID Health** is Red when a Very High item is open and Amber when a High item is open. A closed risk or a resolved issue drops out automatically; set *Archived = Yes* to hide any row.');
 
 h1('8. After you fill: load and check');
 ol([
   'Open `index.html`. Click **Load program folder** and choose `ATS_Program` (first time), or **Refresh data** after later edits.',
   'Use the **Portfolio** dropdown (top bar) to switch between portfolios, or **Programme Overview** to see them all.',
   'Open **Appendix → Data Quality** in the Monthly Council or Weekly Report. It lists problems such as a closed defect without a Resolved Date, a TSR returned before it was received, or a week ending that is not a Friday.',
-  'Use **Export PowerPoint**, or **Copy as picture** on any page, for your slides.',
+  'Use **Export PowerPoint** for slides (built on the client PowerPoint theme; charts and tables stay editable), **Export PDF** for a document you can read or print (the Monthly Council and Weekly Report export every page of the pack), or **Copy as picture** on any single page.',
 ]);
 
 h1('9. How the numbers are worked out');

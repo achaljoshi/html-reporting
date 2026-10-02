@@ -302,12 +302,24 @@ DEPS = [
     ("Test management tool upgrade", "All test teams", "Tooling team", "Tooling", "2026-09-18", "Test Manager", "Portfolio Test Lead", 3, "Reporting gaps.", "Closed", "Upgrade completed.", "Weekly test review", "No", ""),
     ("Interface contract baseline for Portal and API Gateway", "Test design", "Solution design", "Requirements", "2026-08-14", "Test Manager", "Portfolio Test Lead", 5, "Test design cannot be baselined.", "Closed", "Contract baselined.", "Planning workshop", "No", ""),
 ]
+# id, title, decision, category, forum/maker, decided, rationale, impact, status, owner, review, linked, notes, where, prog, progref
+DECISIONS = [
+    ("Adopt risk-based regression selection", "Regression scope for each release is selected by risk rather than running the full pack.", "Approach", "Test Forum", "2026-09-08", "Full regression no longer fits the window as the pack grows faster than capacity.", "Reduced execution effort; slightly lower coverage on low-risk journeys.", "Approved", "Test Manager", "2026-11-06", "R-006", "Selection criteria published on the team wiki.", "Test forum", "No", ""),
+    ("Stub fallback for Notification Service sandbox", "Use agreed stubs whenever the third-party sandbox is unavailable.", "Environment", "Portfolio Test Lead", "2026-09-22", "Sandbox availability is intermittent and blocks execution.", "Faster execution; reduced confidence on live integration behaviour.", "Approved", "Portfolio Test Lead", "2026-10-23", "I-005", "Revisit once sandbox is stable.", "Weekly test review", "No", ""),
+    ("Move Cycle 2 start to align with vendor drop", "Cycle 2 start moves by one week to follow the vendor build 3.2 delivery.", "Schedule", "Steering Group", "2026-09-29", "Starting before the drop would waste execution capacity.", "Cycle 2 completes one week later; still before the change freeze.", "Approved", "Programme Test Manager", "2026-10-09", "R-003", "", "Steering group", "Yes", "PR-0501"),
+    ("Freeze test scope two weeks before each cycle", "Scope changes after the freeze need a test impact assessment and change board approval.", "Governance", "Change Board", "2026-09-15", "Late changes caused rework of scripts and data.", "Greater stability; slower acceptance of late scope.", "Approved", "Portfolio Test Lead", "2026-10-30", "R-005", "", "Change board", "No", ""),
+    ("Add two analysts for Cycle 2", "Request two additional test analysts to cover the execution shortfall.", "Resourcing", "Programme Test Manager", None, "Capacity model shows a shortfall in Cycle 2.", "Closes the capacity gap; additional cost.", "Pending", "Programme Test Manager", "2026-10-16", "D-006", "Awaiting commercial approval.", "Resourcing review", "No", ""),
+    ("Retire manual smoke pack in favour of automated pack", "Manual smoke checks are replaced by the automated smoke suite.", "Approach", "Test Forum", "2026-08-18", "Automated pack now covers all smoke journeys.", "Saves around two days per release.", "Superseded", "Test Manager", None, "", "Superseded by risk-based selection decision D-001.", "Test forum", "No", ""),
+]
+DECISION_STATUSES = ["Pending", "Approved", "Rejected", "Superseded"]
 DEP_TYPES = ["Delivery", "Environment", "Data", "Third Party", "Requirements", "Resource", "Tooling"]
 
 RISK_H = ["ID", "Summary Title", "Description", "Category", "Likelihood", "Likelihood Rating", "Previous Occurrence", "Impact", "Impact Rating", "Risk Score", "Status", "Mitigation Details / Narrative", "Owner", "Review Date", "Where Raised", "Prog RAID", "Prog RAID Reference", "Archived"]
 ISSUE_H = ["ID", "Summary Title", "Full Description", "Tracking ID Reference (Link)", "Reporter", "Owner", "Date Reported", "Priority", "Priority Rating", "Severity", "Severity Rating", "Overall Issue Rating", "Status", "Original Risk ID", "Target Resolution Date", "Actual Resolution Date", "Resolution Summary", "Notes/Actions", "Where Raised", "Prog RAID", "Prog RAID Reference", "Archived"]
 ASSUMP_H = ["ID", "Description", "Raised By", "Date Logged", "Confidence Level", "Impact if Assumption is Incorrect", "Validation Action / Narrative", "Validation Due Date", "Status", "Notes/Actions", "Where Raised", "Prog RAID", "Prog RAID Reference", "Archived"]
 DEP_H = ["ID", "Description", "Dependency For (Who Needs This)", "Dependency From (Who Delivers This)", "Type", "Date Required", "Requestor", "Owner", "Priority", "Impact If Not Met", "Status", "Notes/Actions", "Where Raised", "Prog RAID", "Prog RAID Reference", "Archived"]
+
+DECISION_H = ["ID", "Summary Title", "Decision / Description", "Category", "Decision Maker / Forum", "Date Decided", "Rationale", "Impact of Decision", "Status", "Owner", "Review Date", "Linked Risk / Issue ID", "Notes/Actions", "Where Raised", "Prog RAID", "Prog RAID Reference", "Archived"]
 
 THIN = Side(style="thin", color="D0D5DD")
 BORDER = Border(left=THIN, right=THIN, top=THIN, bottom=THIN)
@@ -328,11 +340,11 @@ def d(s):
     return D(s) if s else None
 
 
-def write_table(ws, title, hint, headers, widths, rows, date_cols, dvs):
+def write_table(ws, title, hint, headers, widths, rows, date_cols, dvs, sample=True):
     ws.sheet_view.showGridLines = False
     ws["C2"], ws["C2"].font = title, F_TITLE
     ws["C3"], ws["C3"].font = hint, F_SUB
-    ws["C5"], ws["C5"].font = "SAMPLE – fictional data for demonstration only. Yellow cells are inputs.", F_NOTE
+    ws["C5"], ws["C5"].font = ("SAMPLE – fictional data for demonstration only. Yellow cells are inputs." if sample else "Yellow cells are inputs. Delete nothing above row 10 - the dashboard reads headers from row 10."), F_NOTE
     ws.column_dimensions["A"].width = 2
     ws.column_dimensions["B"].width = 2
     for i, (h, w) in enumerate(zip(headers, widths)):
@@ -359,10 +371,11 @@ def write_table(ws, title, hint, headers, widths, rows, date_cols, dvs):
         ws.add_data_validation(dv)
         dv.add(f"{col}{FIRST_ROW}:{col}{last}")
     ws.freeze_panes = ws.cell(FIRST_ROW, FIRST_COL + 1)
-    ws.auto_filter.ref = f"C{HDR_ROW}:{openpyxl.utils.get_column_letter(FIRST_COL + len(headers) - 1)}{FIRST_ROW + len(rows) - 1}"
+    ws.auto_filter.ref = f"C{HDR_ROW}:{openpyxl.utils.get_column_letter(FIRST_COL + len(headers) - 1)}{FIRST_ROW + max(len(rows), 1) - 1}"
 
 
-def build_raid():
+def build_raid(sample=True, out=None):
+    out = out or RAID_OUT
     wb = openpyxl.Workbook()
     s = wb.active
     s.title = "Summary Sheet"
@@ -376,9 +389,10 @@ def build_raid():
     s.column_dimensions["G"].width = 4
     s.column_dimensions["H"].width = 30
     s["C2"], s["C2"].font = "RAID Log – Summary", F_TITLE
-    s["C3"], s["C3"].font = "SAMPLE – fictional data for demonstration only.", F_NOTE
-    info = [("Project Name", "Self Assessment"), ("TSR ID", "TSR_SAMPLE-000001"), ("Programme Test Manager", "TBC"),
-            ("Start Date", D("2026-07-01")), ("End Date", D("2027-06-30")), ("Version", 1)]
+    s["C3"], s["C3"].font = ("SAMPLE – fictional data for demonstration only." if sample else "Fill in the project details in column E, then log items on the Risks / Issues / Assumptions / Dependencies / Decisions sheets."), F_NOTE
+    info = ([("Project Name", "Self Assessment"), ("TSR ID", "TSR_SAMPLE-000001"), ("Programme Test Manager", "TBC"),
+             ("Start Date", D("2026-07-01")), ("End Date", D("2027-06-30")), ("Version", 1)] if sample else
+            [("Project Name", None), ("TSR ID", None), ("Programme Test Manager", None), ("Start Date", None), ("End Date", None), ("Version", 1)])
     for i, (k, v) in enumerate(info):
         r = 5 + i
         s.cell(r, 3, k).font = F_BOLD
@@ -415,6 +429,13 @@ def build_raid():
         (desc, forw, frm, typ, req, requestor, owner, p, impact, status, notes, where, prog, pref) = r
         dep_rows.append([f"D-{n:03d}", desc, forw, frm, typ, d(req), requestor, owner, PRI_T[p], impact, status, notes or None, where, prog, pref or None, "No"])
 
+    dec_rows = []
+    for n, r in enumerate(DECISIONS, start=1):
+        (title, desc, cat, maker, decided, why, impact, status, owner, review, linked, notes, where, prog, pref) = r
+        dec_rows.append([f"DEC-{n:03d}", title, desc, cat, maker, d(decided), why, impact, status, owner, d(review), linked or None, notes or None, where, prog, pref or None, "No"])
+    if not sample:
+        risk_rows, issue_rows, assump_rows, dep_rows, dec_rows = [], [], [], [], []
+
     yn = ["Yes", "No"]
     sheets = [
         ("Risks", "Risk Register", "One row per risk. Likelihood x Impact gives the score band used by the dashboard.", RISK_H,
@@ -429,22 +450,25 @@ def build_raid():
         ("Dependencies", "Dependency Log", "One row per dependency; the dashboard lists open items due in the next 30 days.", DEP_H,
          [9, 46, 22, 26, 14, 13, 20, 22, 11, 36, 10, 30, 20, 9, 14, 10], dep_rows, {5},
          {"Type": DEP_TYPES, "Priority": list(PRI_T.values()), "Status": ["Open", "Closed"], "Prog RAID": yn, "Archived": yn}),
+        ("Decisions", "Decision Log", "One row per decision taken - who decided, when, why and what it affects. Pending decisions show as open on the dashboard.", DECISION_H,
+         [9, 34, 48, 14, 24, 13, 40, 36, 12, 22, 13, 14, 30, 20, 9, 14, 10], dec_rows, {5, 10},
+         {"Category": ["Approach", "Environment", "Schedule", "Governance", "Resourcing", "Scope", "Commercial", "Other"], "Status": DECISION_STATUSES, "Prog RAID": yn, "Archived": yn}),
     ]
     for name, title, hint, headers, widths, rows, dcols, dvs in sheets:
         ws = wb.create_sheet(name)
-        write_table(ws, title, hint, headers, widths, rows, dcols, dvs)
+        write_table(ws, title, hint, headers, widths, rows, dcols, dvs, sample)
 
     g = wb.create_sheet("User Guide")
     g.sheet_view.showGridLines = False
     g.column_dimensions["B"].width = 26
     g.column_dimensions["C"].width = 100
     g["B2"], g["B2"].font = "RAID Log – User Guide", F_TITLE
-    g["B3"], g["B3"].font = "SAMPLE – fictional data for demonstration only.", F_NOTE
+    g["B3"], g["B3"].font = ("SAMPLE – fictional data for demonstration only." if sample else "Copy this file for each portfolio and save it as ATS_RAID_Log.xlsx next to the portfolio's weekly workbook."), F_NOTE
     lines = [
         ("Summary Sheet", "Project details in column E (Project Name, TSR ID, Programme Test Manager, Start Date, End Date, Version) and the rating legend."),
-        ("Risks / Issues / Assumptions / Dependencies", "Header row is row 10, data from row 11, ID in column C. Keep header text exactly as written - the dashboard finds columns by name."),
+        ("Risks / Issues / Assumptions / Dependencies / Decisions", "Header row is row 10, data from row 11, ID in column C. Keep header text exactly as written - the dashboard finds columns by name."),
         ("Ratings", "Risk score = Likelihood rating x Impact rating: <5 Very Low, <10 Low, <15 Medium, <20 High, otherwise Very High. Issues use Priority x Severity."),
-        ("Status", "Risks: Open / Mitigated / Closed. Issues: Open / Resolution in progress / Resolved / Closed. Dependencies: Open / Closed. Archived = Yes hides a row from the dashboard."),
+        ("Status", "Risks: Open / Mitigated / Closed. Issues: Open / Resolution in progress / Resolved / Closed. Dependencies: Open / Closed. Decisions: Pending / Approved / Rejected / Superseded. Archived = Yes hides a row from the dashboard."),
         ("Colours", "Yellow cells with blue text are inputs. Use the dropdowns where provided."),
     ]
     for i, (a, b) in enumerate(lines):
@@ -452,14 +476,17 @@ def build_raid():
         c = g.cell(5 + i, 3, b)
         c.font = F_BASE
         c.alignment = Alignment(wrap_text=True, vertical="top")
-    wb.save(RAID_OUT)
-    return len(risk_rows), len(issue_rows), len(dep_rows), len(assump_rows)
+    wb.save(out)
+    return len(risk_rows), len(issue_rows), len(dep_rows), len(assump_rows), len(dec_rows)
 
 
 def main():
     n = build_poap()
     print("POAP bars:", n, "->", POAP_OUT)
-    print("RAID (risks, issues, deps, assumptions):", build_raid(), "->", RAID_OUT)
+    print("RAID (risks, issues, deps, assumptions, decisions):", build_raid(), "->", RAID_OUT)
+    tpl = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "templates", "ATS_RAID_Log_Template.xlsx")
+    build_raid(sample=False, out=tpl)
+    print("RAID template ->", tpl)
     rc = os.environ.get("RECALC_SCRIPT")
     if rc:
         subprocess.run([sys.executable, rc, POAP_OUT, "90"], check=False)

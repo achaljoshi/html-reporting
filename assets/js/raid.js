@@ -82,9 +82,18 @@
       required: D.toIso(X.field(r, "daterequired")), requestor: N.str(X.field(r, "requestor")), owner: N.str(X.field(r, "owner")), priority: N.str(X.field(r, "priority")),
       p: LVL[N.str(X.field(r, "priority")).toLowerCase()] || null, impact: N.str(X.field(r, "impactifnotmet")), status: N.str(X.field(r, "status")) || "Open", notes: N.str(X.field(r, "notesactions")), archived: isYes(r.archived),
     }));
-    return { kind: "raid", info, risks, issues, assumptions, deps };
+    // Decisions sheet (optional — older RAID logs have none). Sheet name tolerant: Decisions / Decision Log / Decision.
+    const decName = wb.SheetNames.find((n) => /^decisions?( log)?$/i.test(n.trim()));
+    const decisions = !decName ? [] : X.table(wb, decName, ["ID", "Summary Title", "Decision", "Status"]).filter((r) => real(r, "summarytitle", "title", "decisiondescription", "description", "decision")).map((r) => ({
+      id: N.str(r.id), title: N.str(X.field(r, "summarytitle", "title", "decision")), desc: N.str(X.field(r, "decisiondescription", "description", "decisiondetails")),
+      category: N.str(X.field(r, "category", "type")), maker: N.str(X.field(r, "decisionmakerforum", "decisionmaker", "madeby", "forum", "approver")),
+      decided: D.toIso(X.field(r, "datedecided", "decisiondate", "date")), rationale: N.str(X.field(r, "rationale", "reason")), impact: N.str(X.field(r, "impactofdecision", "impact")),
+      status: N.str(X.field(r, "status")) || "Pending", owner: N.str(X.field(r, "owner")), review: D.toIso(X.field(r, "reviewdate")),
+      linked: N.str(X.field(r, "linkedriskissueid", "linkedid", "linkedriskid", "linkeditem")), notes: N.str(X.field(r, "notesactions", "notes")), archived: isYes(r.archived),
+    }));
+    return { kind: "raid", info, risks, issues, assumptions, deps, decisions };
   };
-  RA.describe = (d) => `${d.risks.length} risks · ${d.issues.length} issues · ${d.deps.length} dependencies · ${d.assumptions.length} assumptions`;
+  RA.describe = (d) => `${d.risks.length} risks · ${d.issues.length} issues · ${d.deps.length} dependencies · ${d.assumptions.length} assumptions · ${(d.decisions || []).length} decisions`;
 
   // ------------------------------------------------------------------
   // Status helpers + summary
@@ -93,6 +102,7 @@
   RA.isOpenRisk = (r) => !r.archived && lc(r.status) !== "closed";
   RA.isOpenIssue = (i) => !i.archived && !/^(resolved|closed)/.test(lc(i.status));
   RA.isOpenDep = (d) => !d.archived && lc(d.status) !== "closed";
+  RA.isPendingDecision = (d) => !d.archived && /^(pending|proposed|draft|open|awaiting|tbc)/.test(lc(d.status));
 
   RA.summary = function (raid, asOf, period) {
     const risks = raid.risks.filter(RA.isOpenRisk), issues = raid.issues.filter(RA.isOpenIssue), deps = raid.deps.filter(RA.isOpenDep);
@@ -103,6 +113,8 @@
     const inP = (d) => d && period && d >= period.start && d <= period.end;
     const newIssues = raid.issues.filter((i) => inP(i.reported)).length, newAss = raid.assumptions.filter((a) => inP(a.logged)).length;
     const closed = raid.issues.filter((i) => inP(i.actual)).length;
+    const decs = (raid.decisions || []).filter((d) => !d.archived), pending = decs.filter(RA.isPendingDecision);
+    const decInP = decs.filter((d) => inP(d.decided));
     const cutoff = D.add(asOf, 30);
     return {
       openRisks: risks.length, openIssues: issues.length, openDeps: deps.length,
@@ -113,6 +125,10 @@
       topIssues: issues.slice().sort((a, b) => (b.score || 0) - (a.score || 0)).slice(0, 6),
       depsDue: deps.filter((d) => d.required && d.required <= cutoff).sort((a, b) => (a.required < b.required ? -1 : 1)),
       risksOpen: risks, issuesOpen: issues, depsOpen: deps,
+      decisionsTotal: decs.length, decisionsPending: pending.length, decisionsInPeriod: decInP.length,
+      pendingDecisions: pending.slice().sort((a, b) => ((a.review || "9999") < (b.review || "9999") ? -1 : 1)),
+      recentDecisions: decs.filter((d) => !RA.isPendingDecision(d)).sort((a, b) => ((b.decided || "") < (a.decided || "") ? -1 : 1)).slice(0, 8),
+      periodDecisions: decInP.sort((a, b) => ((a.decided || "") < (b.decided || "") ? -1 : 1)),
     };
   };
 
@@ -164,6 +180,14 @@
     return `<div class="table-wrap"><table class="data-table sx-raid-table"><thead><tr><th>ID</th><th>Issue</th><th>Rating</th><th>Status</th><th>Owner</th><th>Target</th></tr></thead><tbody>${items.map((r) => `
       <tr><td><b>${esc(r.id)}</b></td><td class="sx-wrap">${esc(trunc(r.title, opts.titleLen || 120))}</td><td>${RA.ratingChip(r.rating)}</td><td>${esc(r.status)}</td>
       <td class="sx-wrap">${esc(trunc(r.owner, 30))}</td><td>${r.target ? D.fmt(r.target, false) : "—"}</td></tr>`).join("")}</tbody></table></div>`;
+  };
+  RA.decisionTable = function (items, opts) {
+    opts = opts || {};
+    if (!items.length) return `<div class="sx-empty-note">No decisions logged.</div>`;
+    const chip = (st) => { const k = lc(st); const c = /^approved/.test(k) ? "green" : /^(pending|proposed)/.test(k) ? "amber" : /^rejected/.test(k) ? "red" : "grey"; return `<span class="chip ${c}">${esc(st || "—")}</span>`; };
+    return `<div class="table-wrap"><table class="data-table sx-raid-table"><thead><tr><th>ID</th><th>Decision</th><th>Status</th><th>Decided</th><th>By / forum</th><th>Owner</th><th>Linked</th></tr></thead><tbody>${items.map((r) => `
+      <tr><td><b>${esc(r.id)}</b></td><td class="sx-wrap">${esc(trunc(r.title, opts.titleLen || 100))}${r.rationale && opts.why ? `<div class="sx-dim">${esc(trunc(r.rationale, 140))}</div>` : ""}</td><td>${chip(r.status)}</td><td>${r.decided ? D.fmt(r.decided, false) : "—"}</td>
+      <td class="sx-wrap">${esc(trunc(r.maker, 28))}</td><td class="sx-wrap">${esc(trunc(r.owner, 24))}</td><td>${esc(r.linked || "—")}</td></tr>`).join("")}</tbody></table></div>`;
   };
   RA.depTable = function (items, opts) {
     opts = opts || {};

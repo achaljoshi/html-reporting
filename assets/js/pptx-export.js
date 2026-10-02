@@ -1,78 +1,107 @@
 /* ============================================================
-   PowerPoint export — builds a native .pptx (editable charts + text) from the
-   same data the dashboard shows. No screenshots, fully offline (PptxGenJS bundle).
+   PowerPoint export — builds a native .pptx (editable charts, tables and text) from the data the
+   dashboard shows, on the client PowerPoint theme (assets/js/pptx-template.js: masters, layouts, logos).
+
+   How it works (all offline, no screenshots):
+     1. PptxGenJS draws the slides — text, native tables, native charts — at the template's geometry.
+     2. The slides are then transplanted into the template package (JSZip) so they sit on the template's
+        real slide layouts (title slide / content slide, footer logos, slide numbers, green side bar).
+        Titles become real title placeholders, tables use the template's table style.
    ============================================================ */
 (function () {
   "use strict";
   const ATS = (window.ATS = window.ATS || {});
-  const D = ATS.date, N = ATS.num, R = ATS.rag, K = ATS.kpi;
+  const D = ATS.date, N = ATS.num, K = ATS.kpi;
 
-  const NAVY = "0F1C3F", TEAL = "0EA5A0", INK = "101828", SUB = "667085", LINE = "E4E7EC";
-  const RAGC = { Green: "22C55E", Amber: "F5A524", Red: "EF4444", Grey: "98A2B3" };
-  const FONT = "Calibri";
-  const clip = (s, n) => { s = String(s == null ? "" : s); return s.length > n ? s.slice(0, n - 1) + "…" : s; };
-  const bullets = (arr, n) => (arr && arr.length ? arr.map((x) => "• " + clip(x, n || 240)).join("\n") : "Nothing to report.");
+  // ---- template palette (theme: accent1 008670, dk2 00362C, accent2 FFD100, accent3 FF7F38, accent5 C8102E, accent6 83B6FF)
+  const TEAL = "008670", DARK = "00362C", YEL = "FFD100", ORG = "FF7F38", RED = "C8102E", BLUE = "83B6FF", GREY = "7F7F7F", INK = "262626";
+  const RAGC = { Green: "00B050", Amber: "FFC000", Red: "FF0000", Grey: "A6A6A6" };
+  const RAGL = { Green: "G", Amber: "A", Red: "R", Grey: "–" };
+  const TABLE_STYLE = "{5C22544A-7EE6-4342-B048-85BDC9FD1C3A}"; // Medium Style 2 – Accent 1 (the template's table look)
+  const LAYOUT = { title: 1, content: 19 }; // slideLayoutN.xml inside the template ("Title Slide", "Column_B")
+
+  const clip = (s, n) => { s = String(s == null ? "" : s).replace(/\s+/g, " ").trim(); return s.length > n ? s.slice(0, n - 1) + "…" : s; };
   const pct = (v) => (v == null ? null : Math.round(v * 1000) / 10);
+  const slug = (s) => String(s || "").replace(/[^A-Za-z0-9]+/g, "_").replace(/^_|_$/g, "");
+  const ragOf = (label) => (/^(very high|high)$/i.test(label) ? "Red" : /^medium$/i.test(label) ? "Amber" : label ? "Green" : "Grey");
 
-  function header(pptx, slide, o) {
-    slide.background = { color: "FFFFFF" };
-    slide.addText(o.eyebrow || "", { x: 0.5, y: 0.28, w: 9.5, h: 0.28, fontFace: FONT, fontSize: 10.5, color: TEAL, bold: true, charSpacing: 2, margin: 0, isTextBox: true });
-    slide.addText(o.title, { x: 0.5, y: 0.55, w: 10.2, h: 0.6, fontFace: "Cambria", fontSize: 26, bold: true, color: NAVY, margin: 0, isTextBox: true });
-    if (o.sub) slide.addText(o.sub, { x: 0.5, y: 1.15, w: 10.8, h: 0.32, fontFace: FONT, fontSize: 12, color: SUB, margin: 0, isTextBox: true });
-    if (o.rag) {
-      slide.addShape("ellipse", { x: 12.2, y: 0.38, w: 0.62, h: 0.62, fill: { color: RAGC[o.rag] || RAGC.Grey }, line: { type: "none" } });
-      slide.addText(o.rag === "Green" ? "G" : o.rag === "Amber" ? "A" : o.rag === "Red" ? "R" : "–", { x: 12.2, y: 0.38, w: 0.62, h: 0.62, align: "center", valign: "middle", fontFace: FONT, fontSize: 18, bold: true, color: "FFFFFF", margin: 0, isTextBox: true });
-      slide.addText(o.rag === "Grey" ? "N/A" : o.rag.toUpperCase(), { x: 11.9, y: 1.02, w: 1.22, h: 0.22, align: "center", fontFace: FONT, fontSize: 8.5, bold: true, color: SUB, margin: 0, isTextBox: true });
-    }
-    slide.addText(o.foot || "", { x: 0.5, y: 7.12, w: 10, h: 0.25, fontFace: FONT, fontSize: 8.5, color: "98A2B3", margin: 0, isTextBox: true });
-  }
-
-  function narrative(slide, res, x, y, w) {
-    const boxes = [["Key Highlights", bullets(res.highlights, 220), "F0FAF9", "0A7C78"], ["Area of Concern", bullets(res.concern, 220), "FFF7F6", "B42318"], ["Actions Underway", bullets(res.actions, 200), "F5F6FF", "4A4FB8"], ["Executive Commentary", clip(res.exec || "—", 520), "F8FAFC", NAVY]];
-    const hs = [1.62, 1.1, 0.95, 1.6];
-    let cy = y;
-    boxes.forEach((b, i) => {
-      slide.addShape("roundRect", { x, y: cy, w, h: hs[i], rectRadius: 0.08, fill: { color: b[2] }, line: { type: "none" } });
-      slide.addText(b[0], { x: x + 0.12, y: cy + 0.05, w: w - 0.24, h: 0.24, fontFace: FONT, fontSize: 10.5, bold: true, color: b[3], margin: 0, isTextBox: true });
-      slide.addText(b[1], { x: x + 0.12, y: cy + 0.3, w: w - 0.24, h: hs[i] - 0.34, fontFace: FONT, fontSize: 8.6, color: "344054", valign: "top", margin: 0, fit: "shrink", isTextBox: true });
-      cy += hs[i] + 0.08;
+  // ---------------------------------------------------------------- text sizing (no autofit in the file — we size it ourselves)
+  function textHeight(paras, wIn, size) {
+    const cw = (size * 0.53) / 72; let h = 0;
+    paras.forEach((p) => {
+      const w = wIn - (p.bullet ? 0.2 : 0);
+      h += Math.max(1, Math.ceil((p.text.length * cw) / w)) * (size * 1.28) / 72 + (p.gap || 0.045);
     });
+    return h;
+  }
+  function pickSize(paras, wIn, hIn, sizes) {
+    for (const s of sizes) if (textHeight(paras, wIn, s) <= hIn) return s;
+    return sizes[sizes.length - 1];
+  }
+  const bulletParas = (arr, n) => (arr && arr.length ? arr.map((x) => ({ text: clip(x, n || 260), bullet: true })) : [{ text: "Nothing to report." }]);
+
+  function runs(paras, size, color) {
+    return paras.map((p, i) => ({ text: p.text, options: Object.assign({ fontSize: size, breakLine: i < paras.length - 1, paraSpaceAfter: 3, lineSpacingMultiple: 1.05 }, color ? { color } : {}, p.bullet ? { bullet: { indent: 13 } } : {}, p.bold ? { bold: true } : {}) }));
+  }
+  function heading(slide, text, x, y, w) {
+    slide.addText(text, { x, y, w, h: 0.28, fontSize: 14, bold: true, margin: 0, valign: "top", isTextBox: true });
+  }
+  function ragBox(slide, rag, x, y) {
+    slide.addShape("rect", { x, y, w: 0.69, h: 0.25, fill: { color: RAGC[rag] || RAGC.Grey }, line: { type: "none" } });
+    slide.addText(RAGL[rag] || "–", { x, y, w: 0.69, h: 0.25, align: "center", valign: "middle", fontSize: 10, color: "FFFFFF", bold: true, margin: 0, isTextBox: true });
   }
 
-  function axisOpts(extra) {
-    return Object.assign({ catAxisLabelFontSize: 9, valAxisLabelFontSize: 9, catAxisLabelColor: "667085", valAxisLabelColor: "667085", valGridLine: { color: "EEF1F6", size: 0.5 }, catGridLine: { style: "none" }, showLegend: true, legendPos: "b", legendFontSize: 9, legendColor: "475467" }, extra || {});
-  }
-  function chartTitle(slide, t, x, y) { slide.addText(t, { x, y, w: 5.6, h: 0.26, fontFace: FONT, fontSize: 10.5, bold: true, color: "344054", margin: 0, isTextBox: true }); }
+  // ---------------------------------------------------------------- slide scaffolding
+  const progName = (env) => (env.data && env.data.config && env.data.config.programName) || "HMRC ATS";
+  const stamp = (env) => `Source: ${progName(env)} · data as of ${D.fmt(env.all.asOf)}${ATS.isSample() ? " · SAMPLE DATA" : ""}`;
 
-  // ---------------- per-KPI chart builders: return list of {title, draw(slide,x,y,w,h)}
+  function newSlide(deck, title, sub, opts) {
+    opts = opts || {};
+    const s = deck.pptx.addSlide();
+    deck.layouts.push(opts.layout || "content");
+    const tsz = title.length <= 46 ? undefined : title.length <= 58 ? 26 : title.length <= 70 ? 22 : 19;
+    const t = [{ text: title, options: Object.assign({ breakLine: !!sub }, tsz ? { fontSize: tsz } : {}) }];
+    if (sub) t.push({ text: sub, options: { fontSize: 20, bold: true, color: GREY } });
+    s.addText(t, { x: 0.62, y: 0.16, w: 11.72, h: 0.84, margin: 0, valign: "top", objectName: "TPL_TITLE", isTextBox: true });
+    if (opts.foot) s.addText(opts.foot, { x: 0.79, y: 6.6, w: 4.6, h: 0.2, fontSize: 7.5, color: GREY, margin: 0, isTextBox: true });
+    if (opts.notes) s.addNotes(opts.notes);
+    return s;
+  }
+  const cellText = (t, o) => ({ text: t == null ? "" : String(t), options: Object.assign({ fontSize: 10, valign: "middle", margin: [0.02, 0.05, 0.02, 0.05] }, o || {}) });
+  const ragCell = (rag, o) => cellText("●", Object.assign({ color: RAGC[rag] || RAGC.Grey, align: "center", fontSize: 18 }, o || {}));
+  const hdrRow = (arr, o) => arr.map((t, i) => cellText(t, Object.assign({ bold: true, align: o && o.center && o.center.includes(i) ? "center" : "left" }, o && o.opts || {})));
+
+  // ---------------------------------------------------------------- charts (native, restyled to the template palette)
+  const axisOpts = (extra) => Object.assign({ catAxisLabelFontSize: 8, valAxisLabelFontSize: 8, catAxisLabelColor: "595959", valAxisLabelColor: "595959", valGridLine: { color: "E5E5E5", size: 0.5 }, catGridLine: { style: "none" }, showLegend: true, legendPos: "b", legendFontSize: 8, legendColor: "404040", showTitle: true, titleFontSize: 10, titleColor: INK, titleBold: true }, extra || {});
+
   function charts(pptx, res, env) {
     const d = res.detail || {}, C = pptx.charts, out = [];
-    const bar = (title, labels, series, colors, extra) => out.push({ title, draw: (s, x, y, w, h) => s.addChart(C.BAR, series.map((a) => ({ name: a[0], labels, values: a[1] })), Object.assign({ x, y, w, h, barDir: "col", chartColors: colors, barGapWidthPct: 60 }, axisOpts(extra))) });
-    const line = (title, labels, series, colors, extra) => out.push({ title, draw: (s, x, y, w, h) => s.addChart(C.LINE, series.map((a) => ({ name: a[0], labels, values: a[1] })), Object.assign({ x, y, w, h, chartColors: colors, lineSize: 2, lineDataSymbolSize: 6 }, axisOpts(extra))) });
+    const bar = (title, labels, series, colors, extra) => out.push({ title, draw: (s, x, y, w, h) => s.addChart(C.BAR, series.map((a) => ({ name: a[0], labels, values: a[1] })), Object.assign({ x, y, w, h, barDir: "col", chartColors: colors, barGapWidthPct: 60, title }, axisOpts(extra))) });
+    const line = (title, labels, series, colors, extra) => out.push({ title, draw: (s, x, y, w, h) => s.addChart(C.LINE, series.map((a) => ({ name: a[0], labels, values: a[1] })), Object.assign({ x, y, w, h, chartColors: colors, lineSize: 2, lineDataSymbolSize: 5, title }, axisOpts(extra))) });
     const wk = (we) => D.fmt(we, false);
     switch (res.key) {
       case "coverage": {
         const L = [["High", d.levels.high], ["Medium", d.levels.med], ["Low", d.levels.low]];
-        bar("Coverage % vs target", L.map((x) => x[0]), [["Coverage %", L.map((x) => pct(x[1].pct) || 0)], ["Target %", L.map((x) => pct(x[1].target) || 0)]], [TEAL, NAVY], { valAxisMaxVal: 100, valAxisLabelFormatCode: '0"%"' });
-        bar("Requirements vs test cases", L.map((x) => x[0]), [["Requirements", L.map((x) => x[1].reqs || 0)], ["Test cases", L.map((x) => x[1].tcs || 0)]], [NAVY, TEAL]);
+        bar("Coverage % vs target", L.map((x) => x[0]), [["Coverage %", L.map((x) => pct(x[1].pct) || 0)], ["Target %", L.map((x) => pct(x[1].target) || 0)]], [TEAL, DARK], { valAxisMaxVal: 100, valAxisLabelFormatCode: '0"%"' });
+        bar("Requirements vs test cases", L.map((x) => x[0]), [["Requirements", L.map((x) => x[1].reqs || 0)], ["Test cases", L.map((x) => x[1].tcs || 0)]], [DARK, TEAL]);
         break;
       }
       case "dde":
         if (d.byPri) {
-          bar("Raised vs rejected by priority", d.byPri.map((x) => x.pri), [["Raised", d.byPri.map((x) => x.raised)], ["Rejected", d.byPri.map((x) => x.rejected)]], [TEAL, "EF4444"]);
+          bar("Raised vs rejected by priority", d.byPri.map((x) => x.pri), [["Raised", d.byPri.map((x) => x.raised)], ["Rejected", d.byPri.map((x) => x.rejected)]], [TEAL, RED]);
           const wks = Object.keys(d.raisedByWeek).sort();
           bar("Defects raised per week", wks.map(wk), [["Raised", wks.map((w) => d.raisedByWeek[w])]], [TEAL], { showLegend: false });
         }
         break;
       case "environment":
-        bar("Availability vs target", ["Availability %", "Target %"], [["Uptime", [pct(d.avail), pct(d.req > 0 ? 1 - d.greenAt / d.req : 1)]], ["Downtime", [pct(1 - d.avail), pct(d.req > 0 ? d.greenAt / d.req : 0)]]], [TEAL, "EF4444"], { barGrouping: "stacked", valAxisMaxVal: 100 });
+        bar("Availability vs target", ["Availability %", "Target %"], [["Uptime", [pct(d.avail), pct(d.req > 0 ? 1 - d.greenAt / d.req : 1)]], ["Downtime", [pct(1 - d.avail), pct(d.req > 0 ? d.greenAt / d.req : 0)]]], [TEAL, RED], { barGrouping: "stacked", valAxisMaxVal: 100 });
         bar("Downtime hours per week", d.series.slice(-10).map((x) => wk(x.we)), [["Downtime (h)", d.series.slice(-10).map((x) => x.down)]], [TEAL], { showLegend: false });
         break;
       case "aging":
         if (d.counts) {
           bar("Aging buckets (working days)", K.BUCKETS, [["Defects", K.BUCKETS.map((b) => d.counts[b])]], [TEAL], { showLegend: false });
           const l = d.list.slice().sort((a, b) => (a.d.raised < b.d.raised ? -1 : 1)).slice(-10);
-          bar("Aging per defect (working days)", l.map((x) => x.d.id.replace(/^.*-/, "#")), [["Aging", l.map((x) => x.days)]], [NAVY], { showLegend: false });
+          bar("Aging per defect (working days)", l.map((x) => x.d.id.replace(/^.*-/, "#")), [["Aging", l.map((x) => x.days)]], [DARK], { showLegend: false });
         }
         break;
       case "milestones":
@@ -81,200 +110,339 @@
       case "tsr":
         if (d.items && d.items.length) bar("Working days per TSR (limit " + d.sla + " days)", d.items.map((x) => x.t.ref.slice(-12)), [["Working days", d.items.map((x) => x.wd)]], [TEAL], { showLegend: false, valAxisMaxVal: Math.max(d.sla + 2, ...d.items.map((x) => x.wd + 1)) });
         break;
-      case "leakage": bar("Defects found in production (" + d.quarter + ")", K.PRIORITIES, [["Defects", d.counts]], ["EF4444"], { showLegend: false, valAxisMaxVal: Math.max(5, ...d.counts) }); break;
+      case "leakage": bar("Defects found in production (" + d.quarter + ")", K.PRIORITIES, [["Defects", d.counts]], [RED], { showLegend: false, valAxisMaxVal: Math.max(5, ...d.counts) }); break;
       case "csat": if (d.scores && d.scores.length) bar("CSAT score", d.scores.map((s) => wk(s.we)), [["Score", d.scores.map((s) => s.score)]], [TEAL], { showLegend: false, valAxisMaxVal: 5 }); break;
       case "automation":
-        bar("Automation coverage %", ["Test data", "Test cases"], [["Automated", [pct(d.td) || 0, pct(d.tc) || 0]], ["Not automated", [d.td == null ? 0 : pct(1 - d.td), d.tc == null ? 0 : pct(1 - d.tc)]]], [TEAL, "D0D5DD"], { barDir: "bar", barGrouping: "stacked", valAxisMaxVal: 100 });
-        line("Automation trend", d.series.map((s) => wk(s.we)), [["Test data %", d.series.map((s) => pct(s.td))], ["Test cases %", d.series.map((s) => pct(s.tc))]], [TEAL, "6366F1"]);
+        bar("Automation coverage %", ["Test data", "Test cases"], [["Automated", [pct(d.td) || 0, pct(d.tc) || 0]], ["Not automated", [d.td == null ? 0 : pct(1 - d.td), d.tc == null ? 0 : pct(1 - d.tc)]]], [TEAL, "BFBFBF"], { barDir: "bar", barGrouping: "stacked", valAxisMaxVal: 100 });
+        line("Automation trend", d.series.map((s) => wk(s.we)), [["Test data %", d.series.map((s) => pct(s.td))], ["Test cases %", d.series.map((s) => pct(s.tc))]], [TEAL, BLUE]);
         break;
       case "commercial":
-        line("Spend, forecast and budget (£)", d.series.map((s) => wk(s.we)), [["Cumulative spend", d.series.map((s) => s.spend)], ["Forecast", d.series.map((s) => s.forecast)], ["Budget", d.series.map(() => d.budget)]], [TEAL, "6366F1", "EF4444"], { valAxisLabelFormatCode: "£#,##0" });
+        line("Spend, forecast and budget (£)", d.series.map((s) => wk(s.we)), [["Cumulative spend", d.series.map((s) => s.spend)], ["Forecast", d.series.map((s) => s.forecast)], ["Budget", d.series.map(() => d.budget)]], [TEAL, BLUE, RED], { valAxisLabelFormatCode: "£#,##0" });
         break;
-      case "resource": line("FTE planned vs actual", d.series.map((s) => wk(s.we)), [["Planned", d.series.map((s) => s.plan)], ["Actual", d.series.map((s) => s.act)]], [NAVY, TEAL]); break;
-      case "demand": if (d.rows) bar("Planned vs available FTE", d.rows.map((r) => D.fmtMonth(r.month.slice(0, 7), false)), [["Planned", d.rows.map((r) => r.planned)], ["Available", d.rows.map((r) => r.available)]], [TEAL, NAVY]); break;
+      case "resource": line("FTE planned vs actual", d.series.map((s) => wk(s.we)), [["Planned", d.series.map((s) => s.plan)], ["Actual", d.series.map((s) => s.act)]], [DARK, TEAL]); break;
+      case "demand": if (d.rows) bar("Planned vs available FTE", d.rows.map((r) => D.fmtMonth(r.month.slice(0, 7), false)), [["Planned", d.rows.map((r) => r.planned)], ["Available", d.rows.map((r) => r.available)]], [TEAL, DARK]); break;
       case "execution": {
         const s = d.series;
-        bar("Execution (cumulative)", s.map((x) => wk(x.we)), [["Passed", s.map((x) => x.passed)], ["Failed", s.map((x) => x.failed)], ["Blocked", s.map((x) => x.blocked)]], [TEAL, "EF4444", "F5A524"], { barGrouping: "stacked" });
-        bar("Executed per week", s.map((x) => wk(x.we)), [["Executed", s.map((x, i) => (i ? x.executed - s[i - 1].executed : x.executed))]], ["6366F1"], { showLegend: false });
+        bar("Execution (cumulative)", s.map((x) => wk(x.we)), [["Passed", s.map((x) => x.passed)], ["Failed", s.map((x) => x.failed)], ["Blocked", s.map((x) => x.blocked)]], [TEAL, RED, YEL], { barGrouping: "stacked" });
+        bar("Executed per week", s.map((x) => wk(x.we)), [["Executed", s.map((x, i) => (i ? x.executed - s[i - 1].executed : x.executed))]], [BLUE], { showLegend: false });
         break;
       }
       case "raid":
-        if (d.riskBands) bar("Open risks by rating", d.riskBands.map((b) => b.label), [["Risks", d.riskBands.map((b) => b.n)]], ["F59E0B"], { showLegend: false });
+        if (d.riskBands) bar("Open risks and issues by rating", d.riskBands.map((b) => b.label), [["Risks", d.riskBands.map((b) => b.n)], ["Issues", d.issueBands.map((b) => b.n)]], [ORG, DARK]);
         break;
     }
     return out;
   }
 
-  function tableForKpi(pptx, slide, res, env, x, y, w) {
-    const d = res.detail || {}, hdr = (t) => ({ text: t, options: { bold: true, color: "FFFFFF", fill: { color: NAVY }, fontSize: 9 } });
-    const ragCell = (r) => ({ text: r === "Grey" ? "–" : r, options: { fill: { color: RAGC[r] || RAGC.Grey }, color: "FFFFFF", bold: true, align: "center", fontSize: 8.5 } });
-    if (res.key === "milestones" && d.ev) {
-      const rows = [[hdr("Milestone"), hdr("Due"), hdr("Status"), hdr("RAG")]].concat(d.ev.slice(0, 9).map((e) => [{ text: clip(e.m.name, 42), options: { fontSize: 8.5 } }, { text: D.fmt(e.m.due, false), options: { fontSize: 8.5 } }, { text: e.status, options: { fontSize: 8.5 } }, ragCell(e.rag)]));
-      slide.addTable(rows, { x, y, w, colW: [w * 0.5, w * 0.17, w * 0.2, w * 0.13], border: { type: "solid", color: LINE, pt: 0.5 }, fontFace: FONT, rowH: 0.24 });
-      return true;
-    }
-    if (res.key === "readiness" && d.rows) {
-      const areas = K.READINESS_AREAS;
-      const rows = [[hdr("Topic"), hdr("Overall")].concat(areas.map((a) => hdr(clip(a.label, 14))))].concat(d.rows.map((r) => [{ text: clip(r.topic, 40), options: { fontSize: 9, bold: true } }, ragCell(r.overall)].concat(areas.map((a) => ragCell((r.areas[a.key] || {}).rag)))));
-      slide.addTable(rows, { x, y, w, border: { type: "solid", color: LINE, pt: 0.5 }, fontFace: FONT, rowH: 0.32 });
-      return true;
-    }
-    if (res.key === "raid" && d.topRisks) {
-      const rows = [[hdr("ID"), hdr("Risk"), hdr("Rating")]].concat(d.topRisks.slice(0, 6).map((r) => [{ text: r.id, options: { fontSize: 8.5, bold: true } }, { text: clip(r.title, 90), options: { fontSize: 8.5 } }, { text: r.rating, options: { fontSize: 8.5 } }]));
-      slide.addTable(rows, { x, y, w, colW: [w * 0.1, w * 0.72, w * 0.18], border: { type: "solid", color: LINE, pt: 0.5 }, fontFace: FONT, rowH: 0.28 });
-      return true;
-    }
-    if (res.key === "dde" && d.open && d.open.length) {
-      const rows = [[hdr("Open defect"), hdr("Priority"), hdr("Owner"), hdr("TCs blocked")]].concat(d.open.slice(0, 6).map((x2) => [{ text: clip(x2.id + " — " + x2.summary, 70), options: { fontSize: 8.5 } }, { text: x2.priority, options: { fontSize: 8.5 } }, { text: clip(x2.owner, 14), options: { fontSize: 8.5 } }, { text: String(x2.blocked), options: { fontSize: 8.5 } }]));
-      slide.addTable(rows, { x, y, w, colW: [w * 0.56, w * 0.14, w * 0.16, w * 0.14], border: { type: "solid", color: LINE, pt: 0.5 }, fontFace: FONT, rowH: 0.27 });
-      return true;
-    }
-    return false;
+  // ---------------------------------------------------------------- KPI slide (template's two-panel pattern)
+  const PANEL = { x: 0.79, y: 1.25, w: 11.54, h: 5.28 };
+  function panel(slide) {
+    slide.addTable([[{ text: "" }, { text: "" }]], { x: PANEL.x, y: PANEL.y, w: PANEL.w, colW: [5.75, 5.79], rowH: PANEL.h, border: { type: "none" } });
   }
 
-  function kpiSlide(pptx, res, env, eyebrow, titleOverride) {
-    const s = pptx.addSlide();
-    header(pptx, s, { eyebrow, title: titleOverride || res.name, sub: `${env.period.label} · ${res.position}`, rag: res.rag, foot: `Source: ${env.data.config.programName} · data as of ${D.fmt(env.all.asOf)}${ATS.isSample() ? " · SAMPLE DATA" : ""}` });
-    const cs = charts(pptx, res, env);
-    const lx = 0.5, lw = 7.65;
-    let y = 1.6;
-    if (cs.length === 1) { const ch = res.key === "milestones" ? 1.9 : 2.55; chartTitle(s, cs[0].title, lx, y); cs[0].draw(s, lx, y + 0.27, lw, ch); y += ch + 0.4; }
-    else if (cs.length >= 2) { const w = (lw - 0.2) / 2; cs.slice(0, 2).forEach((c, i) => { chartTitle(s, c.title, lx + i * (w + 0.2), y); c.draw(s, lx + i * (w + 0.2), y + 0.27, w, 2.55); }); y += 2.95; }
-    const hasTable = tableForKpi(pptx, s, res, env, lx, y, lw);
-    if (!cs.length && !hasTable) s.addText(res.position, { x: lx, y: 2.2, w: lw, h: 1, fontFace: FONT, fontSize: 22, bold: true, color: NAVY, margin: 0, isTextBox: true });
-    narrative(s, res, 8.45, 1.6, 4.4);
-    s.addNotes(`${res.name}: ${res.position}. ${res.exec || ""}`);
+  function kpiSlide(deck, res, env, page) {
+    const grp = page && page.group, n = page && page.n;
+    const title = res.key === "raid" ? `${progName(env)} (RAID Health)` : `${progName(env)}${grp && n ? ` (${grp} – ${n})` : grp && page.id !== "scorecard" ? ` (${grp})` : ""}`;
+    const s = newSlide(deck, title, (page && page.label) || res.name, { foot: stamp(env), notes: `${res.name}: ${res.position}. ${res.exec || ""}` });
+    panel(s);
+    // ---- left: executive commentary + charts
+    const lx = 0.95, lw = 5.4;
+    heading(s, "Executive Commentary", lx, 1.4, 4.3);
+    ragBox(s, res.rag, 5.62, 1.42);
+    const para = [{ text: res.position, bold: true, gap: 0.07 }, { text: clip(res.exec || "—", 560) }];
+    const size = pickSize(para, lw, 1.45, [11, 10.5, 10, 9]);
+    s.addText(runs(para, size), { x: lx, y: 1.78, w: lw, h: 1.45, margin: 0, valign: "top", isTextBox: true });
+    const cs = charts(deck.pptx, res, env).slice(0, 2);
+    if (cs.length === 1) cs[0].draw(s, lx - 0.05, 3.3, lw + 0.05, 3.1);
+    else if (cs.length === 2) { const w = (lw - 0.12) / 2; cs.forEach((c, i) => c.draw(s, lx - 0.05 + i * (w + 0.17), 3.3, w, 3.1)); }
+    // ---- right: highlights / concern / actions
+    const rx = 6.7, rw = 5.45, top = 1.4, avail = 5.0;
+    const secs = [["Key Highlights", bulletParas(res.highlights, 230)], ["Area of Concern", bulletParas(res.concern, 230)], ["Actions Underway", bulletParas(res.actions, 210)]];
+    let fs = 12;
+    for (const cand of [13, 12, 11, 10.5, 10, 9.5, 9]) { fs = cand; if (secs.reduce((a, x) => a + 0.34 + textHeight(x[1], rw, cand), 0) <= avail) break; }
+    const need = secs.map((x) => 0.34 + textHeight(x[1], rw, fs)), tot = need.reduce((a, b) => a + b, 0), extra = Math.max(0, avail - tot) / 3;
+    let y = top;
+    secs.forEach((x, i) => {
+      heading(s, x[0], rx, y, rw);
+      s.addText(runs(x[1], fs), { x: rx, y: y + 0.32, w: rw, h: need[i] - 0.3 + extra, margin: 0, valign: "top", isTextBox: true });
+      y += need[i] + extra;
+    });
     return s;
   }
 
-  function scorecardSlide(pptx, env, title, eyebrow) {
-    const s = pptx.addSlide();
+  // ---------------------------------------------------------------- full-width table slides
+  function tableSlide(deck, env, title, sub, rows, colW, o) {
+    o = o || {};
+    const s = newSlide(deck, title, sub, { foot: stamp(env) });
+    s.addTable(rows, { x: 0.74, y: o.y || 1.3, w: colW.reduce((a, b) => a + b, 0), colW, rowH: o.rowH || 0.34, valign: "middle" });
+    return s;
+  }
+
+  function scorecardSlide(deck, env, label) {
     const ov = env.all.overall;
-    header(pptx, s, { eyebrow, title, sub: `${env.period.label} · ${env.data.config.programName}`, rag: ov.rag, foot: `Source: ${env.data.config.programName}${ATS.isSample() ? " · SAMPLE DATA" : ""}` });
-    const hdr = (t) => ({ text: t, options: { bold: true, color: "FFFFFF", fill: { color: NAVY }, fontSize: 10 } });
-    const rows = [[hdr("KPI"), hdr("Current position"), hdr("RAG"), hdr("Commentary")]].concat(env.all.scorecard.map((r) => [
-      { text: r.name, options: { bold: true, fontSize: 9.5 } }, { text: clip(r.position, 48), options: { fontSize: 9 } },
-      { text: r.rag === "Grey" ? "N/A" : r.rag, options: { fill: { color: RAGC[r.rag] || RAGC.Grey }, color: "FFFFFF", bold: true, align: "center", fontSize: 9 } },
-      { text: clip(r.exec, 150), options: { fontSize: 8.5, color: "475467" } }]));
-    s.addTable(rows, { x: 0.5, y: 1.6, w: 12.33, colW: [2.6, 2.9, 0.8, 6.03], border: { type: "solid", color: LINE, pt: 0.5 }, fontFace: FONT, rowH: 0.36, valign: "middle" });
+    const s = newSlide(deck, `${progName(env)} ${label}`, null, { foot: stamp(env) });
+    const rows = [hdrRow(["KPI", "Current Position", "RAG", "Commentary"], { center: [2] })].concat(env.all.scorecard.map((r) => [
+      cellText(r.name, { fontSize: 10 }), cellText(clip(r.position, 46), { fontSize: 10 }), ragCell(r.rag), cellText(clip(r.exec, 150), { fontSize: 10 })]));
+    s.addTable(rows, { x: 0.74, y: 1.0, w: 11.51, colW: [2.2, 2.25, 0.5, 6.56], rowH: 0.36, valign: "middle" });
+    s.addText("Overall", { x: 10.9, y: 0.38, w: 0.7, h: 0.25, fontSize: 10, bold: true, align: "right", margin: 0, valign: "middle", isTextBox: true });
+    ragBox(s, ov.rag, 11.66, 0.38);
     return s;
   }
 
-  function lessonsSlide(pptx, env) {
-    const s = pptx.addSlide();
-    header(pptx, s, { eyebrow: "Risks, Issues and Lessons Learned (2/2)", title: "Lessons Learned", sub: env.period.label, foot: "" });
-    const hdr = (t) => ({ text: t, options: { bold: true, color: "FFFFFF", fill: { color: NAVY }, fontSize: 10 } });
-    const rows = [[hdr("Category"), hdr("Lesson learned"), hdr("Improvement action"), hdr("Owner")]].concat(env.data.lessons.slice(0, 8).map((l) => [l.category, clip(l.lesson, 160), clip(l.action, 160), l.owner].map((t) => ({ text: t || "", options: { fontSize: 9 } }))));
-    s.addTable(rows, { x: 0.5, y: 1.6, w: 12.33, colW: [1.8, 4.6, 4.6, 1.33], border: { type: "solid", color: LINE, pt: 0.5 }, fontFace: FONT, rowH: 0.4 });
+  function lessonsSlide(deck, env) {
+    const rows = [hdrRow(["Date", "Category", "Lesson Learned", "Improvement Action", "Owner", "Status"])].concat(env.data.lessons.slice(0, 9).map((l) => [D.fmt(l.date, false), l.category, clip(l.lesson, 170), clip(l.action, 170), l.owner, l.status].map((t) => cellText(t || "", { fontSize: 10.5 }))));
+    tableSlide(deck, env, "Risks, Issues, and Lessons Learned (2/2)", "Lessons Learned (Post Transition)", rows, [0.85, 1.2, 4.0, 3.65, 1.05, 0.75], { y: 1.3, rowH: 0.6 });
   }
 
-  function lookSlide(pptx, env) {
-    const s = pptx.addSlide();
-    header(pptx, s, { eyebrow: "Next 4 weeks", title: "Look-ahead", sub: `${D.fmt(D.add(env.all.asOf, 1), false)} – ${D.fmt(D.add(env.all.asOf, 28))}`, foot: "" });
+  function raidSlides(deck, env, res) {
+    const d = res.detail;
+    const s = newSlide(deck, "Risks, Issues, and Lessons Learned (1/2)", null, { foot: stamp(env) });
+    s.addText("Key Risks (Open Items)", { x: 0.74, y: 0.78, w: 4, h: 0.3, fontSize: 14, bold: false, underline: { style: "sng" }, margin: 0, isTextBox: true });
+    const risks = d.topRisks.slice(0, 4);
+    s.addTable([hdrRow(["ID", "Risk", "Impact", "Mitigation", "RAG"], { center: [4] })].concat(risks.map((r) => [
+      cellText(r.id, { fontSize: 9, bold: true }), cellText(clip(r.title, 120), { fontSize: 10 }), cellText(r.rating || "", { fontSize: 10 }), cellText(clip(r.mitigation, 170), { fontSize: 10 }), ragCell(ragOf(r.rating))])),
+    { x: 0.74, y: 1.1, w: 11.49, colW: [0.6, 4.2, 1.0, 5.0, 0.69], rowH: 0.36, valign: "middle" });
+    const yI = 1.1 + 0.36 * (risks.length + 1) + 0.42;
+    s.addText("Current Issues", { x: 0.74, y: yI - 0.34, w: 3, h: 0.3, fontSize: 14, underline: { style: "sng" }, margin: 0, isTextBox: true });
+    const issues = d.topIssues.slice(0, 4);
+    s.addTable([hdrRow(["ID", "Issue", "Status", "Rating", "Owner", "Target"])].concat((issues.length ? issues : [{ id: "–", title: "No open issues", status: "", rating: "", owner: "", target: null }]).map((r) => [
+      cellText(r.id, { fontSize: 9, bold: true }), cellText(clip(r.title, 120), { fontSize: 10 }), cellText(r.status, { fontSize: 10 }), cellText(r.rating || "", { fontSize: 10 }), cellText(clip(r.owner, 26), { fontSize: 10 }), cellText(r.target ? D.fmt(r.target, false) : "", { fontSize: 10 })])),
+    { x: 0.74, y: yI, w: 11.49, colW: [0.6, 5.1, 1.7, 1.0, 2.0, 1.09], rowH: 0.34, valign: "middle" });
+    // dependencies + decisions
+    const s2 = newSlide(deck, "Dependencies and Decisions", "RAID log — next 30 days and decision log", { foot: stamp(env) });
+    s2.addText("Dependencies needed in the next 30 days", { x: 0.74, y: 1.15, w: 6, h: 0.3, fontSize: 14, underline: { style: "sng" }, margin: 0, isTextBox: true });
+    const deps = d.depsDue.slice(0, 5);
+    s2.addTable([hdrRow(["ID", "Dependency", "Priority", "Needed by", "From", "Owner"])].concat((deps.length ? deps : [{ id: "–", desc: "None due in the next 30 days", priority: "", required: null, from: "", owner: "" }]).map((r) => [
+      cellText(r.id, { fontSize: 9, bold: true }), cellText(clip(r.desc, 110), { fontSize: 10 }), cellText(r.priority, { fontSize: 10 }), cellText(r.required ? D.fmt(r.required, false) : "TBC", { fontSize: 10 }), cellText(clip(r.from, 26), { fontSize: 10 }), cellText(clip(r.owner, 24), { fontSize: 10 })])),
+    { x: 0.74, y: 1.5, w: 11.49, colW: [0.6, 5.0, 1.0, 1.1, 2.0, 1.79], rowH: 0.34, valign: "middle" });
+    const yD = 1.5 + 0.34 * (Math.max(deps.length, 1) + 1) + 0.5;
+    s2.addText(`Decisions — ${d.decisionsPending || 0} pending, ${d.decisionsInPeriod || 0} taken in this period`, { x: 0.74, y: yD - 0.36, w: 8, h: 0.3, fontSize: 14, underline: { style: "sng" }, margin: 0, isTextBox: true });
+    const decs = (d.pendingDecisions || []).concat(d.recentDecisions || []).slice(0, 6);
+    s2.addTable([hdrRow(["ID", "Decision", "Status", "Decided", "By / forum", "Owner"])].concat((decs.length ? decs : [{ id: "–", title: "No decisions logged", status: "", decided: null, maker: "", owner: "" }]).map((r) => [
+      cellText(r.id, { fontSize: 9, bold: true }), cellText(clip(r.title, 100), { fontSize: 10 }), cellText(r.status, { fontSize: 10 }), cellText(r.decided ? D.fmt(r.decided, false) : "", { fontSize: 10 }), cellText(clip(r.maker, 26), { fontSize: 10 }), cellText(clip(r.owner, 24), { fontSize: 10 })])),
+    { x: 0.74, y: yD, w: 11.49, colW: [0.7, 5.0, 1.1, 1.1, 1.9, 1.69], rowH: 0.32, valign: "middle" });
+  }
+
+  // KPI-specific detail table (shown on its own slide after the KPI slide)
+  function detailSlide(deck, res, env, page) {
+    const d = res.detail || {}, base = progName(env);
+    if (res.key === "milestones" && d.ev && d.ev.length) {
+      const rows = [hdrRow(["Milestone", "Due", "Status", "RAG"], { center: [3] })].concat(d.ev.slice(0, 12).map((e) => [cellText(clip(e.m.name, 80)), cellText(D.fmt(e.m.due, false)), cellText(e.status), ragCell(e.rag)]));
+      tableSlide(deck, env, `${base} (Milestone detail)`, "Test Milestone Delivery", rows, [6.2, 1.6, 2.7, 1.0], { rowH: 0.36 });
+    } else if (res.key === "readiness" && d.rows && d.rows.length) {
+      const areas = K.READINESS_AREAS, w = (11.51 - 3.0 - 0.8) / areas.length;
+      const rows = [hdrRow(["Topic", "Overall"].concat(areas.map((a) => clip(a.label, 22))), { center: [1].concat(areas.map((a, i) => i + 2)), opts: { fontSize: 8.5 } })].concat(d.rows.map((r) => [cellText(clip(r.topic, 44), { bold: true }), ragCell(r.overall)].concat(areas.map((a) => ragCell((r.areas[a.key] || {}).rag)))));
+      tableSlide(deck, env, `${base} (Readiness)`, "SIT Readiness Dashboard", rows, [3.0, 0.8].concat(areas.map(() => w)), { rowH: 0.45 });
+    } else if (res.key === "dde" && d.open && d.open.length) {
+      const rows = [hdrRow(["Open defect", "Priority", "Owner", "TCs blocked"], { center: [3] })].concat(d.open.slice(0, 12).map((x) => [cellText(clip(x.id + " — " + x.summary, 90)), cellText(x.priority), cellText(clip(x.owner, 22)), cellText(String(x.blocked), { align: "center" })]));
+      tableSlide(deck, env, `${base} (Defect detail)`, "Open Defects", rows, [7.0, 1.3, 2.2, 1.0], { rowH: 0.34 });
+    }
+  }
+
+  function lookSlide(deck, env) {
     const rows = ATS.lookahead(env, 28).slice(0, 14);
-    const hdr = (t) => ({ text: t, options: { bold: true, color: "FFFFFF", fill: { color: NAVY }, fontSize: 10 } });
-    s.addTable([[hdr("Date"), hdr("Type"), hdr("What"), hdr("Where")]].concat(rows.map((r) => [D.fmt(r.date, false), r.kind, clip(r.item, 90), clip(r.where, 50)].map((t) => ({ text: t, options: { fontSize: 9 } })))), { x: 0.5, y: 1.6, w: 12.33, colW: [1.2, 1.1, 6.2, 3.83], border: { type: "solid", color: LINE, pt: 0.5 }, fontFace: FONT, rowH: 0.32 });
+    tableSlide(deck, env, `${progName(env)} Look-ahead`, `${D.fmt(D.add(env.all.asOf, 1), false)} – ${D.fmt(D.add(env.all.asOf, 28))}`,
+      [hdrRow(["Date", "Type", "What", "Where"])].concat(rows.map((r) => [D.fmt(r.date, false), r.kind, clip(r.item, 95), clip(r.where, 52)].map((t) => cellText(t)))), [1.2, 1.2, 6.3, 2.81], { rowH: 0.33 });
   }
 
-
-  function historySlide(pptx, env, kind) {
+  function historySlide(deck, env, kind) {
     const isMonth = kind === "month";
     const keys = (isMonth ? K.months(env.data) : K.weeks(env.data).slice(-10)).filter((k) => k <= env.period.key);
     const cols = keys.map((k) => ({ k, res: K.computeAll(env.data, isMonth ? K.monthPeriod(k) : K.weekPeriod(k), { raid: env.raid, withPrev: false }) }));
-    const s = pptx.addSlide();
-    header(pptx, s, { eyebrow: isMonth ? "Month-over-month" : "Week-by-week", title: isMonth ? "RAG History by Month" : "RAG History by Week", sub: "Each cell recalculated as of the end of that period", foot: "" });
-    const hdr = (t) => ({ text: t, options: { bold: true, color: "FFFFFF", fill: { color: NAVY }, fontSize: 9, align: "center" } });
-    const cell = (r) => ({ text: r === "Grey" ? "–" : r[0], options: { fill: { color: RAGC[r] || RAGC.Grey }, color: "FFFFFF", bold: true, align: "center", fontSize: 9 } });
-    const rows = [[Object.assign(hdr("KPI"), { options: { bold: true, color: "FFFFFF", fill: { color: NAVY }, fontSize: 9 } })].concat(cols.map((c) => hdr(isMonth ? D.fmtMonth(c.k, false) : D.fmt(c.k, false))))]
-      .concat([[{ text: "Overall (declared)", options: { bold: true, fontSize: 9 } }].concat(cols.map((c) => cell(c.res.overall.rag)))])
-      .concat(K.KPI_META.filter((m) => !m.extra).map((m) => [{ text: m.name, options: { fontSize: 9 } }].concat(cols.map((c) => cell(c.res.byKey[m.key].rag)))));
-    s.addTable(rows, { x: 0.5, y: 1.6, w: 12.33, colW: [3.2].concat(cols.map(() => (12.33 - 3.2) / cols.length)), border: { type: "solid", color: LINE, pt: 0.5 }, fontFace: FONT, rowH: 0.3 });
+    const rows = [hdrRow(["KPI"].concat(cols.map((c) => (isMonth ? D.fmtMonth(c.k, false) : D.fmt(c.k, false)))), { center: cols.map((c, i) => i + 1) })]
+      .concat([[cellText("Overall (declared)", { bold: true })].concat(cols.map((c) => ragCell(c.res.overall.rag)))])
+      .concat(K.KPI_META.filter((m) => !m.extra).map((m) => [cellText(m.name)].concat(cols.map((c) => ragCell(c.res.byKey[m.key].rag)))));
+    tableSlide(deck, env, `${progName(env)} ${isMonth ? "RAG History by Month" : "RAG History by Week"}`, null, rows, [3.4].concat(cols.map(() => (11.51 - 3.4) / Math.max(cols.length, 1))), { y: 0.95, rowH: 0.33 });
   }
 
-  function titleSlide(pptx, env, kind) {
-    const s = pptx.addSlide();
-    s.background = { color: NAVY };
-    s.addText(env.data.config.programName, { x: 0.8, y: 2.2, w: 11.5, h: 0.9, fontFace: "Cambria", fontSize: 38, bold: true, color: "FFFFFF", margin: 0, isTextBox: true });
-    s.addText(kind === "month" ? "Monthly Unified Quality Council" : "Weekly Delivery & Quality Report", { x: 0.8, y: 3.15, w: 11.5, h: 0.6, fontFace: FONT, fontSize: 22, color: "9FE7E2", margin: 0, isTextBox: true });
-    s.addText(env.period.label + (ATS.isSample() ? "  ·  SAMPLE DATA" : ""), { x: 0.8, y: 3.85, w: 11.5, h: 0.4, fontFace: FONT, fontSize: 14, color: "CADCFC", margin: 0, isTextBox: true });
-    s.addText("Generated from the ATS Weekly Data workbook", { x: 0.8, y: 6.7, w: 8, h: 0.3, fontFace: FONT, fontSize: 10, color: "7C8FB8", margin: 0, isTextBox: true });
+  // ---------------------------------------------------------------- title + agenda
+  function titleSlide(deck, env, kind) {
+    const s = deck.pptx.addSlide(); deck.layouts.push("title");
+    s.addText(progName(env), { x: 0.68, y: 2.07, w: 12.22, h: 1.23, margin: 0, objectName: "TPL_TITLE", isTextBox: true });
+    s.addText((kind === "month" ? "Monthly Unified Quality Council" : "Weekly Delivery & Quality Report") + " - " + (kind === "month" ? D.fmtMonth(env.period.key) : "w/e " + D.fmt(env.period.key, false)), { x: 0.68, y: 3.38, w: 9.33, h: 0.9, margin: 0, objectName: "TPL_SUB", isTextBox: true });
+    s.addText(D.fmt(env.period.end).toUpperCase() + (ATS.isSample() ? "  ·  SAMPLE DATA" : ""), { x: 0.68, y: 4.73, w: 8, h: 0.47, fontSize: 20, margin: 0, color: "0B0C0C", isTextBox: true });
+  }
+  function agendaSlide(deck, items) {
+    const s = newSlide(deck, "Agenda", null, {});
+    s.addText(items.map((t, i) => ({ text: `${i + 1}.   ${t}`, options: { breakLine: i < items.length - 1, paraSpaceAfter: 10 } })), { x: 0.74, y: 1.6, w: 9, h: 3, fontSize: 14, margin: 0, valign: "top", isTextBox: true });
   }
 
-  // pages: the section's page list (we map the pages that make sense in a deck)
-  ATS.buildPptx = function (kind, env, pages) {
+  // ---------------------------------------------------------------- deck assembly
+  function buildMonthlyOrWeekly(kind, env, pages) {
     const pptx = new window.PptxGenJS();
     pptx.layout = "LAYOUT_WIDE";
-    pptx.title = env.data.config.programName + " — " + env.period.label;
-    titleSlide(pptx, env, kind);
-    if (kind === "month") {
-      const a = pptx.addSlide(); header(pptx, a, { eyebrow: "Agenda", title: "Agenda", foot: "" });
-      a.addText(["Risks, Issues and Lessons Learned", "ATS Performance Scorecard (KPIs / Metrics)", "Commercials + Resourcing", "Deep Dive items (if any)", "AOB"].map((t) => ({ text: t, options: { bullet: { type: "number" }, breakLine: true } })), { x: 0.8, y: 1.8, w: 9, h: 3, fontFace: FONT, fontSize: 20, color: INK, paraSpaceAfter: 12, isTextBox: true });
-    }
+    pptx.title = progName(env) + " — " + env.period.label;
+    const deck = { pptx, layouts: [] };
+    titleSlide(deck, env, kind);
+    if (kind === "month") agendaSlide(deck, ["Risks, Issues, and Lessons Learned", "ATS Performance Scorecard (KPIs / Metrics)", "Commercials + Resourcing", "Deep Dive items (if any)", "AOB"]);
     pages.forEach((p) => {
-      if (p.id === "scorecard") scorecardSlide(pptx, env, kind === "month" ? "Overall Dashboard" : "Week at a Glance", kind === "month" ? "ATS Performance Scorecard" : "Weekly Report");
-      else if (p.id === "glance" && kind === "week") scorecardSlide(pptx, env, "Week at a Glance", "Weekly Report");
-      else if (p.id === "history") historySlide(pptx, env, kind);
-      else if (p.id === "lessons") { if (env.data.lessons.length) lessonsSlide(pptx, env); }
-      else if (p.id === "look") lookSlide(pptx, env);
-      else if (p.kpi && env.all.byKey[p.kpi] && !env.all.byKey[p.kpi].empty) kpiSlide(pptx, env.all.byKey[p.kpi], env, p.group + " — " + p.label + (p.n ? " (" + p.n + ")" : ""), p.label === env.all.byKey[p.kpi].name ? null : null);
+      if (p.id === "scorecard" || (p.id === "glance" && kind === "week")) scorecardSlide(deck, env, kind === "month" ? "Overall Dashboard" : "Week at a Glance");
+      else if (p.id === "history") historySlide(deck, env, kind);
+      else if (p.id === "lessons") { if (env.data.lessons.length) lessonsSlide(deck, env); }
+      else if (p.id === "look") lookSlide(deck, env);
+      else if (p.kpi && env.all.byKey[p.kpi] && !env.all.byKey[p.kpi].empty) {
+        const res = env.all.byKey[p.kpi];
+        if (res.key === "raid") { kpiSlide(deck, res, env, p); raidSlides(deck, env, res); }
+        else { kpiSlide(deck, res, env, p); detailSlide(deck, res, env, p); }
+      }
     });
-    return pptx;
-  };
+    return deck;
+  }
 
+  // ---------------------------------------------------------------- transplant into the template package
+  const P_NS = "http://schemas.openxmlformats.org/presentationml/2006/main", A_NS = "http://schemas.openxmlformats.org/drawingml/2006/main";
+  const REL_NS = "http://schemas.openxmlformats.org/package/2006/relationships";
+  const strip = (e) => { while (e.firstChild) e.removeChild(e.firstChild); while (e.attributes.length) e.removeAttribute(e.attributes[0].name); };
 
-  // ---------------- programme (all portfolios) export
-  ATS.exportProgrammePptx = async function (last) {
-    if (!window.PptxGenJS) { ATS.toast("PowerPoint library missing", "err"); return; }
-    try {
-      ATS.toast("Building PowerPoint…");
-      const { rows, period, agg: a } = last;
-      const pptx = new window.PptxGenJS(); pptx.layout = "LAYOUT_WIDE";
-      const prog = (rows[0] && rows[0].p.kpi.config.programme) || "ATS Programme";
-      const t = pptx.addSlide(); t.background = { color: NAVY };
-      t.addText(prog, { x: 0.8, y: 2.2, w: 11.5, h: 0.9, fontFace: "Cambria", fontSize: 38, bold: true, color: "FFFFFF", margin: 0, isTextBox: true });
-      t.addText("Programme Overview — all portfolios", { x: 0.8, y: 3.15, w: 11.5, h: 0.6, fontFace: FONT, fontSize: 22, color: "9FE7E2", margin: 0, isTextBox: true });
-      t.addText(period.label + (ATS.isSample() ? "  ·  SAMPLE DATA" : ""), { x: 0.8, y: 3.85, w: 11.5, h: 0.4, fontFace: FONT, fontSize: 14, color: "CADCFC", margin: 0, isTextBox: true });
-      const hdr = (x, al) => ({ text: x, options: { bold: true, color: "FFFFFF", fill: { color: NAVY }, fontSize: 8.5, align: al || "center" } });
-      const cell = (r) => ({ text: r === "Grey" ? "–" : r[0], options: { fill: { color: RAGC[r] || RAGC.Grey }, color: "FFFFFF", bold: true, align: "center", fontSize: 8.5 } });
-      const RANKS = { Grey: 0, Green: 1, Amber: 2, Red: 3 };
-      const sevOf = (r) => RANKS[r.all.overall.rag] * 100 + r.all.scorecard.filter((x) => x.rag === "Red").length * 10 + r.all.scorecard.filter((x) => x.rag === "Amber").length;
-      const sorted = rows.slice().sort((x, y) => sevOf(y) - sevOf(x) || x.name.localeCompare(y.name));
-      // heat-map slide(s): 12 portfolios per slide
-      for (let i = 0; i < sorted.length; i += 12) {
-        const chunk = sorted.slice(i, i + 12);
-        const s = pptx.addSlide();
-        header(pptx, s, { eyebrow: "Programme overview", title: "Portfolio RAG Heat-map", sub: period.label + (sorted.length > 12 ? ` · portfolios ${i + 1}–${i + chunk.length} of ${sorted.length}` : ""), foot: ATS.isSample() ? "SAMPLE DATA" : "" });
-        const body = [[hdr("Portfolio", "left"), hdr("Overall")].concat(K.KPI_META.map((m) => hdr(clip(m.name.replace(/ \(.*\)/, ""), 11))))]
-          .concat(chunk.map((r) => [{ text: r.name, options: { bold: true, fontSize: 9 } }, cell(r.all.overall.rag)].concat(K.KPI_META.map((m) => cell(r.all.byKey[m.key].rag)))));
-        s.addTable(body, { x: 0.5, y: 1.6, w: 12.33, colW: [2.4, 0.7].concat(K.KPI_META.map(() => (12.33 - 3.1) / K.KPI_META.length)), border: { type: "solid", color: LINE, pt: 0.5 }, fontFace: FONT, rowH: 0.34 });
-      }
-      // summary table
-      for (let i = 0; i < sorted.length; i += 12) {
-        const chunk = sorted.slice(i, i + 12);
-        const s = pptx.addSlide();
-        header(pptx, s, { eyebrow: "Programme overview", title: "Portfolio Summary", sub: `${a.n} portfolios · ${a.rag.Green} Green · ${a.rag.Amber} Amber · ${a.rag.Red} Red`, foot: "" });
-        const body = [[hdr("Portfolio", "left"), hdr("Overall"), hdr("Executed"), hdr("Open defects"), hdr("Availability"), hdr("Overdue milestones"), hdr("TSR over SLA"), hdr("High RAID"), hdr("Main concern", "left")]].concat(chunk.map((r) => {
-          const g = (k) => r.all.byKey[k];
-          const conc = r.all.scorecard.filter((x) => x.rag === "Red").concat(r.all.scorecard.filter((x) => x.rag === "Amber"))[0];
-          const num = (v) => ({ text: String(v), options: { align: "center", fontSize: 9 } });
-          return [{ text: r.name, options: { bold: true, fontSize: 9 } }, cell(r.all.overall.rag), num(g("execution").empty ? "–" : N.pct(g("execution").detail.execPct)), num(g("dde").empty || !g("dde").detail.open ? 0 : g("dde").detail.open.length), num(g("environment").empty ? "–" : N.pct1(g("environment").detail.avail)), num(g("milestones").empty ? "–" : g("milestones").detail.overdue), num(g("tsr").detail && g("tsr").detail.over ? g("tsr").detail.over : 0), num(g("raid").empty ? "–" : g("raid").detail.veryHigh + g("raid").detail.high), { text: conc ? clip(conc.name + ": " + conc.position, 46) : "All Green", options: { fontSize: 8.5, color: "475467" } }];
-        }));
-        s.addTable(body, { x: 0.5, y: 1.6, w: 12.33, colW: [2.2, 0.8, 0.9, 1.0, 1.0, 1.2, 1.0, 0.9, 3.33], border: { type: "solid", color: LINE, pt: 0.5 }, fontFace: FONT, rowH: 0.34 });
-      }
-      await pptx.writeFile({ fileName: "Programme_Overview_" + period.key + ".pptx" });
-      ATS.toast("Saved Programme_Overview_" + period.key + ".pptx", "ok");
-    } catch (e) { console.error(e); ATS.toast("Export failed: " + e.message, "err"); }
+  function postProcessSlide(xml, kind, slideNo) {
+    const doc = new DOMParser().parseFromString(xml, "application/xml");
+    const all = (tag) => Array.prototype.slice.call(doc.getElementsByTagName(tag));
+    // titles -> real placeholders
+    all("p:sp").forEach((sp) => {
+      const nv = sp.getElementsByTagName("p:cNvPr")[0]; if (!nv) return;
+      const nm = nv.getAttribute("name"); if (nm !== "TPL_TITLE" && nm !== "TPL_SUB") return;
+      nv.setAttribute("name", nm === "TPL_TITLE" ? "Title" : "Subtitle");
+      const cs = sp.getElementsByTagName("p:cNvSpPr")[0]; cs.removeAttribute("txBox");
+      while (cs.firstChild) cs.removeChild(cs.firstChild);
+      const lock = doc.createElementNS(A_NS, "a:spLocks"); lock.setAttribute("noGrp", "1"); cs.appendChild(lock);
+      const nvPr = sp.getElementsByTagName("p:nvPr")[0]; const ph = doc.createElementNS(P_NS, "p:ph");
+      ph.setAttribute("type", nm === "TPL_TITLE" ? "ctrTitle" : "subTitle"); if (nm === "TPL_SUB") ph.setAttribute("idx", "1");
+      nvPr.appendChild(ph);
+      const bp = sp.getElementsByTagName("a:bodyPr")[0]; if (bp) strip(bp);
+      // PptxGenJS stamps every run black — drop that so the layout's title colour/size applies (explicit colours stay)
+      Array.prototype.slice.call(sp.getElementsByTagName("a:srgbClr")).forEach((c) => { if (c.getAttribute("val") === "000000" && c.parentNode.localName === "solidFill") { const f = c.parentNode; f.parentNode.removeChild(f); } });
+      // inherit fill/geometry look from the layout (keep position)
+      const sppr = sp.getElementsByTagName("p:spPr")[0];
+      ["a:prstGeom", "a:noFill"].forEach((t) => { const e = sppr.getElementsByTagName(t)[0]; if (e && e.parentNode === sppr) sppr.removeChild(e); });
+    });
+    // tables -> the template's table style; let the style draw borders/fills
+    all("a:tbl").forEach((tbl) => {
+      const pr = tbl.getElementsByTagName("a:tblPr")[0];
+      const hasText = Array.prototype.some.call(tbl.getElementsByTagName("a:t"), (t) => t.textContent.trim());
+      pr.setAttribute("bandRow", "1"); if (hasText) pr.setAttribute("firstRow", "1"); else pr.removeAttribute("firstRow");
+      Array.prototype.slice.call(pr.getElementsByTagName("a:tableStyleId")).forEach((e) => pr.removeChild(e));
+      const id = doc.createElementNS(A_NS, "a:tableStyleId"); id.textContent = TABLE_STYLE; pr.appendChild(id);
+      ["a:lnL", "a:lnR", "a:lnT", "a:lnB"].forEach((t) => Array.prototype.slice.call(tbl.getElementsByTagName(t)).forEach((e) => e.parentNode.removeChild(e)));
+    });
+    // slide number placeholder (content slides)
+    if (kind !== "title") {
+      const tree = doc.getElementsByTagName("p:spTree")[0];
+      const frag = new DOMParser().parseFromString(`<root xmlns:p="${P_NS}" xmlns:a="${A_NS}"><p:sp><p:nvSpPr><p:cNvPr id="9001" name="Slide Number Placeholder 1"/><p:cNvSpPr><a:spLocks noGrp="1"/></p:cNvSpPr><p:nvPr><p:ph type="sldNum" sz="quarter" idx="18"/></p:nvPr></p:nvSpPr><p:spPr/><p:txBody><a:bodyPr/><a:lstStyle/><a:p><a:fld id="{3D3F7771-BA92-784A-B6DD-D9CB8E3BB7BB}" type="slidenum"><a:rPr lang="en-GB"/><a:t>${slideNo}</a:t></a:fld><a:endParaRPr lang="en-GB"/></a:p></p:txBody></p:sp></root>`, "application/xml");
+      tree.appendChild(doc.importNode(frag.documentElement.firstChild, true));
+    }
+    return new XMLSerializer().serializeToString(doc);
+  }
+
+  async function assemble(deck, titleText) {
+    if (!window.JSZip) throw new Error("JSZip missing");
+    const tplB64 = window.ATS_PPTX_TEMPLATE;
+    if (!tplB64) throw new Error("PowerPoint template (assets/js/pptx-template.js) is missing — run tools/build_pptx_template.py");
+    const gen = await window.JSZip.loadAsync(await deck.pptx.write({ outputType: "arraybuffer" }));
+    const tpl = await window.JSZip.loadAsync(tplB64, { base64: true });
+    const text = (z, n) => z.file(n).async("string");
+
+    const slideFiles = Object.keys(gen.files).filter((n) => /^ppt\/slides\/slide\d+\.xml$/.test(n)).sort((a, b) => parseInt(a.match(/(\d+)\.xml/)[1], 10) - parseInt(b.match(/(\d+)\.xml/)[1], 10));
+    const ct = [], presRels = [], sldIds = [];
+    for (let i = 0; i < slideFiles.length; i++) {
+      const no = i + 1, kind = deck.layouts[i] || "content", base = slideFiles[i].replace(/^ppt\/slides\//, "");
+      tpl.file("ppt/slides/" + base, postProcessSlide(await text(gen, slideFiles[i]), kind, no));
+      let rels = await text(gen, "ppt/slides/_rels/" + base + ".rels");
+      rels = rels.replace(/<Relationship\b[^>]*relationships\/notesSlide"[^>]*\/>/g, "").replace(/<Relationship\b[^>]*relationships\/notesSlide[^>]*\/>/g, "");
+      rels = rels.replace(/(<Relationship\b[^>]*relationships\/slideLayout"[^>]*Target=")[^"]*(")/, `$1../slideLayouts/slideLayout${LAYOUT[kind]}.xml$2`);
+      rels = rels.replace(/(Target=")\.\.\/slideLayouts\/slideLayout\d+\.xml(")/, `$1../slideLayouts/slideLayout${LAYOUT[kind]}.xml$2`);
+      rels = rels.replace(/Target="\.\.\/media\/([^"]+)"/g, 'Target="../media/gen_$1"');
+      tpl.file("ppt/slides/_rels/" + base + ".rels", rels);
+      ct.push(`<Override PartName="/ppt/slides/${base}" ContentType="application/vnd.openxmlformats-officedocument.presentationml.slide+xml"/>`);
+      presRels.push(`<Relationship Id="rIdGen${no}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/slide" Target="slides/${base}"/>`);
+      sldIds.push(`<p:sldId id="${256 + i}" r:id="rIdGen${no}"/>`);
+    }
+    // charts, embedded workbooks, media
+    for (const n of Object.keys(gen.files)) {
+      if (gen.files[n].dir) continue;
+      if (/^ppt\/charts\//.test(n) || /^ppt\/embeddings\//.test(n)) tpl.file(n, await gen.file(n).async("uint8array"));
+      else if (/^ppt\/media\//.test(n)) tpl.file(n.replace(/^ppt\/media\//, "ppt/media/gen_"), await gen.file(n).async("uint8array"));
+    }
+    const genCt = await text(gen, "[Content_Types].xml");
+    (genCt.match(/<Override\b[^>]*PartName="\/ppt\/charts\/[^"]+"[^>]*\/>/g) || []).forEach((o) => ct.push(o));
+    let tct = await text(tpl, "[Content_Types].xml");
+    (genCt.match(/<Default\b[^>]*\/>/g) || []).forEach((d) => { const ext = (d.match(/Extension="([^"]+)"/) || [])[1]; if (ext && !new RegExp('<Default[^>]*Extension="' + ext + '"', "i").test(tct)) tct = tct.replace(/(<Types\b[^>]*>)/, "$1" + d); });
+    tpl.file("[Content_Types].xml", tct.replace("</Types>", ct.join("") + "</Types>"));
+    // presentation.xml + rels
+    let pres = await text(tpl, "ppt/presentation.xml");
+    pres = pres.replace(/<p:sldIdLst>[\s\S]*?<\/p:sldIdLst>/, "").replace(/(<p:sldSz\b)/, `<p:sldIdLst>${sldIds.join("")}</p:sldIdLst>$1`);
+    tpl.file("ppt/presentation.xml", pres);
+    tpl.file("ppt/_rels/presentation.xml.rels", (await text(tpl, "ppt/_rels/presentation.xml.rels")).replace("</Relationships>", presRels.join("") + "</Relationships>"));
+    // document title
+    tpl.file("docProps/core.xml", (await text(tpl, "docProps/core.xml")).replace(/<dc:title>[\s\S]*?<\/dc:title>/, "<dc:title>" + String(titleText).replace(/[<>&]/g, "") + "</dc:title>"));
+    return tpl.generateAsync({ type: "blob", mimeType: "application/vnd.openxmlformats-officedocument.presentationml.presentation", compression: "DEFLATE" });
+  }
+
+  function save(blob, name) {
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob); a.download = name;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+  }
+
+  ATS.buildDeckBlob = async function (kind, env, pages) {
+    const deck = buildMonthlyOrWeekly(kind, env, pages);
+    return assemble(deck, progName(env) + " — " + env.period.label);
   };
 
   ATS.exportPptx = async function (kind, env, pages) {
     if (!window.PptxGenJS) { ATS.toast("PowerPoint library missing", "err"); return; }
     try {
-      ATS.toast("Building PowerPoint…");
-      const pptx = ATS.buildPptx(kind, env, pages);
-      const who = String(ATS.store.current || "").replace(/[^A-Za-z0-9]+/g, "_").replace(/^_|_$/g, "");
-      const name = (kind === "month" ? "Monthly_Council_" : "Weekly_Report_") + (who ? who + "_" : "") + env.period.key;
-      await pptx.writeFile({ fileName: name + ".pptx" });
-      ATS.toast("Saved " + name + ".pptx — native, editable charts", "ok");
+      ATS.toast("Building PowerPoint on the client template…");
+      const blob = await ATS.buildDeckBlob(kind, env, pages);
+      const name = (kind === "month" ? "Monthly_Council_" : "Weekly_Report_") + (slug(ATS.store.current) ? slug(ATS.store.current) + "_" : "") + env.period.key + ".pptx";
+      save(blob, name);
+      ATS.toast("Saved " + name + " — template theme, editable charts", "ok");
+    } catch (e) { console.error(e); ATS.toast("Export failed: " + e.message, "err"); }
+  };
+
+  // ---------------- programme (all portfolios) export
+  ATS.exportProgrammePptx = async function (last) {
+    if (!window.PptxGenJS) { ATS.toast("PowerPoint library missing", "err"); return; }
+    try {
+      ATS.toast("Building PowerPoint on the client template…");
+      const { rows, period, agg: a } = last;
+      const pptx = new window.PptxGenJS(); pptx.layout = "LAYOUT_WIDE";
+      const deck = { pptx, layouts: [] };
+      const prog = (rows[0] && rows[0].p.kpi.config.programme) || "HMRC ATS";
+      const env = { data: { config: { programName: prog } }, all: { asOf: period.end } };
+      const t = pptx.addSlide(); deck.layouts.push("title");
+      t.addText(prog, { x: 0.68, y: 2.07, w: 12.22, h: 1.23, margin: 0, objectName: "TPL_TITLE", isTextBox: true });
+      t.addText("Programme Overview - all portfolios - " + period.label, { x: 0.68, y: 3.38, w: 9.33, h: 0.9, margin: 0, objectName: "TPL_SUB", isTextBox: true });
+      t.addText((ATS.isSample() ? "SAMPLE DATA" : D.fmt(period.end).toUpperCase()), { x: 0.68, y: 4.73, w: 8, h: 0.47, fontSize: 20, margin: 0, color: "0B0C0C", isTextBox: true });
+      const RANKS = { Grey: 0, Green: 1, Amber: 2, Red: 3 };
+      const sevOf = (r) => RANKS[r.all.overall.rag] * 100 + r.all.scorecard.filter((x) => x.rag === "Red").length * 10 + r.all.scorecard.filter((x) => x.rag === "Amber").length;
+      const sorted = rows.slice().sort((x, y) => sevOf(y) - sevOf(x) || x.name.localeCompare(y.name));
+      const short = (m) => clip(m.name.replace(/ \(.*\)/, ""), 11);
+      const foot = `Source: ${prog} · ${period.label}${ATS.isSample() ? " · SAMPLE DATA" : ""}`;
+      for (let i = 0; i < sorted.length; i += 12) {
+        const chunk = sorted.slice(i, i + 12);
+        const s = newSlide(deck, `${prog} Portfolio RAG Heat-map`, sorted.length > 12 ? `Portfolios ${i + 1}–${i + chunk.length} of ${sorted.length}` : period.label, { foot });
+        const cw = (11.51 - 2.4 - 0.7) / K.KPI_META.length;
+        s.addTable([hdrRow(["Portfolio", "Overall"].concat(K.KPI_META.map(short)), { center: [1].concat(K.KPI_META.map((m, j) => j + 2)) , opts: { fontSize: 8 } })].concat(chunk.map((r) => [cellText(r.name, { bold: true, fontSize: 10 }), ragCell(r.all.overall.rag)].concat(K.KPI_META.map((m) => ragCell(r.all.byKey[m.key].rag, { fontSize: 12 }))))),
+        { x: 0.74, y: 1.3, w: 11.51, colW: [2.4, 0.7].concat(K.KPI_META.map(() => cw)), rowH: 0.52, valign: "middle" });
+      }
+      for (let i = 0; i < sorted.length; i += 12) {
+        const chunk = sorted.slice(i, i + 12);
+        const s = newSlide(deck, `${prog} Portfolio Summary`, `${a.n} portfolios · ${a.rag.Green} Green · ${a.rag.Amber} Amber · ${a.rag.Red} Red`, { foot });
+        const body = [hdrRow(["Portfolio", "Overall", "Executed", "Open defects", "Availability", "Overdue milestones", "TSR over SLA", "High RAID", "Main concern"], { center: [1, 2, 3, 4, 5, 6, 7] })].concat(chunk.map((r) => {
+          const g = (k) => r.all.byKey[k];
+          const conc = r.all.scorecard.filter((x) => x.rag === "Red").concat(r.all.scorecard.filter((x) => x.rag === "Amber"))[0];
+          const num = (v) => cellText(String(v), { align: "center", fontSize: 11 });
+          return [cellText(r.name, { bold: true }), ragCell(r.all.overall.rag), num(g("execution").empty ? "–" : N.pct(g("execution").detail.execPct)), num(g("dde").empty || !g("dde").detail.open ? 0 : g("dde").detail.open.length),
+            num(g("environment").empty ? "–" : N.pct1(g("environment").detail.avail)), num(g("milestones").empty ? "–" : g("milestones").detail.overdue), num(g("tsr").detail && g("tsr").detail.over ? g("tsr").detail.over : 0),
+            num(g("raid").empty ? "–" : g("raid").detail.veryHigh + g("raid").detail.high), cellText(conc ? clip(conc.name + ": " + conc.position, 52) : "All Green", { fontSize: 10 })];
+        }));
+        s.addTable(body, { x: 0.74, y: 1.3, w: 11.51, colW: [1.9, 0.75, 0.9, 0.95, 1.0, 1.15, 0.95, 0.85, 3.06], rowH: 0.5, valign: "middle" });
+      }
+      const blob = await assemble(deck, prog + " — Programme overview");
+      const name = "Programme_Overview_" + period.key + ".pptx";
+      save(blob, name);
+      ATS.toast("Saved " + name, "ok");
     } catch (e) { console.error(e); ATS.toast("Export failed: " + e.message, "err"); }
   };
 })();
