@@ -220,3 +220,5 @@ table.data-table.sx-raid-table td{vertical-align:top;}
 .sx-ml.up{justify-content:flex-end;}
 .sx-ml b{font-size:9.5px;color:var(--navy);font-weight:800;line-height:1.2;white-space:nowrap;}
 .sx-ml span{font-size:9.5px;line-height:1.15;color:#475467;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}
+.sx-slide .table-wrap{overflow-x:auto;}
+.sx-slide .data-table td.sx-wrap:nth-child(2){min-width:210px;}
