@@ -66,7 +66,7 @@
   function heatmap(rows) {
     const cols = K.KPI_META;
     const sorted = rows.slice().sort((a, b) => (st.sort === "name" ? a.name.localeCompare(b.name) : sev(b) - sev(a) || a.name.localeCompare(b.name)));
-    return `<div class="table-wrap"><table class="sx-matrix sx-hm"><thead><tr><th style="text-align:left">Portfolio</th><th>Overall</th>${cols.map((c) => `<th title="${esc(c.name)}">${SHORT[c.key]}</th>`).join("")}</tr></thead><tbody>
+    return `<div class="table-wrap"><table class="sx-matrix sx-hm"><thead><tr><th style="text-align:left">Portfolio</th><th>Overall</th>${cols.map((c) => `<th class="sx-vh" title="${esc(c.name)}"><span>${SHORT[c.key]}</span></th>`).join("")}</tr></thead><tbody>
       ${sorted.map((r) => `<tr><td class="topic"><a data-open="${esc(r.name)}" style="cursor:pointer">${esc(r.name)}</a></td>
         <td><span class="sx-cellrag" style="background:${R.color(r.all.overall.rag)}" title="Overall ${esc(r.all.overall.rag)}${r.all.overall.declared ? " (declared)" : ""}">${U.ragLetter(r.all.overall.rag)}</span></td>
         ${cols.map((c) => { const x = kpi(r, c.key); return `<td><span class="sx-cellrag" data-open="${esc(r.name)}" data-page="${c.key}" style="background:${R.color(x.rag)};cursor:pointer" title="${esc(r.name + " — " + c.name + ": " + x.position)}">${U.ragLetter(x.rag)}</span></td>`; }).join("")}</tr>`).join("")}
@@ -125,8 +125,7 @@
     let list = per[st.mode];
     if (!list.length) { st.mode = st.mode === "month" ? "week" : "month"; list = per[st.mode]; }
     if (!st.key || !list.includes(st.key)) {
-      st.key = list[list.length - 1];
-      if (st.mode === "month" && list.length > 1) { const n = ps.reduce((m, p) => Math.max(m, p.kpi.snapshots.filter((s) => s.weekEnding.slice(0, 7) === st.key).length), 0); if (n < 3) st.key = list[list.length - 2]; }
+      st.key = K.defaultKey(list, st.mode, ps.map((p) => p.kpi.snapshots));
     }
     const { rows, period } = compute(ps, st.mode, st.key);
     const a = aggregate(rows);

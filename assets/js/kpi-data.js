@@ -126,7 +126,7 @@
       ["resourcesplanned", "Resources Planned"], ["resourcesactual", "Resources Actual"], ["cumulativespend", "Cumulative Spend"], ["forecastatcompletion", "Forecast at Completion"]];
     snapsRaw.forEach((r) => {
       const we = D.toIso(X.field(r, "weekending"));
-      if (!we) return;
+      if (!we) { const raw = X.field(r, "weekending"); warnings.push({ sheet: "Weekly_Snapshot", msg: `Row ${r._row}: Week Ending ${raw == null || raw === "" ? "is empty" : `"${String(raw).trim().slice(0, 20)}" is not a valid date`} — this row is not counted.` }); return; }
       NUMCOLS.forEach(([k, label]) => { const raw = X.field(r, k); if (raw != null && String(raw).trim() !== "" && N.num(raw) == null) warnings.push({ sheet: "Weekly_Snapshot", msg: `W/E ${we}: "${String(raw).trim().slice(0, 20)}" in ${label} is not a number, so it was ignored.` }); });
       snapMap[we] = {
         weekEnding: we,
@@ -144,6 +144,17 @@
       };
     });
     const snapshots = Object.keys(snapMap).sort().map((k) => snapMap[k]);
+
+    // rows that would otherwise vanish silently because their ID or date cannot be read
+    const dropCheck = (sheet, wanted, idKey, idLabel, dateKey, dateLabel) => X.table(wb, sheet, wanted).forEach((r) => {
+      const id = N.str(X.field(r, idKey)), raw = X.field(r, dateKey);
+      if (id && D.toIso(raw)) return;
+      warnings.push({ sheet, msg: !id ? `Row ${r._row}: ${idLabel} is empty — this row is not counted.` : `Row ${r._row}: ${dateLabel} ${raw == null || raw === "" ? "is empty" : `"${String(raw).trim().slice(0, 20)}" is not a valid date`}, so "${id.slice(0, 40)}" is not counted.` });
+    });
+    dropCheck("Defect_Log", ["Defect ID", "Summary", "Priority", "Raised Date", "Status"], "defectid", "Defect ID", "raiseddate", "Raised Date");
+    dropCheck("TSR_Log", ["TSR Ref", "Description", "Received Date", "Returned Date"], "tsrref", "TSR Ref", "receiveddate", "Received Date");
+    dropCheck("Milestones", ["Milestone", "Due Date", "Completed Date", "Critical?"], "milestone", "Milestone name", "duedate", "Due Date");
+    dropCheck("Topic_Progress", ["Week Ending", "Topic", "Phase", "TCs Planned"], "topic", "Topic", "weekending", "Week Ending");
 
     // ---- Topic progress
     const topicProgress = X.table(wb, "Topic_Progress", ["Week Ending", "Topic", "Phase", "TCs Planned"])
@@ -731,6 +742,22 @@
   // ============================================================
   // Data-quality checks (accuracy matters — fines!)
   // ============================================================
+  // Which period to open by default: the latest one that has actually started (rows pre-filled for future Fridays
+  // are ignored), and for months, step back one when the latest month has fewer than 3 weeks of data.
+  // list = ascending period keys; snapLists = one snapshots array per portfolio. Falls back to the plain latest.
+  K.defaultKey = function (list, kind, snapLists) {
+    if (!list.length) return null;
+    const today = D.todayIso(), past = (s) => s.weekEnding <= today;
+    const wks = [].concat.apply([], snapLists.map((a) => a.filter(past).map((s) => s.weekEnding)));
+    if (!wks.length) return list[list.length - 1];
+    if (kind !== "month") { const c = list.filter((k) => k <= today); return c.length ? c[c.length - 1] : list[list.length - 1]; }
+    const months = Array.from(new Set(wks.map((w) => w.slice(0, 7)))).sort();
+    const cand = list.filter((k) => months.includes(k)); if (!cand.length) return list[list.length - 1];
+    let key = cand[cand.length - 1];
+    if (cand.length > 1) { const n = snapLists.reduce((m, a) => Math.max(m, a.filter((s) => past(s) && s.weekEnding.slice(0, 7) === key).length), 0); if (n < 3) key = cand[cand.length - 2]; }
+    return key;
+  };
+
   K.quality = function (data, today) {
     today = today || D.todayIso();
     const w = (data.warnings || []).slice();
@@ -747,9 +774,10 @@
       ["high", "med", "low"].forEach((l) => { if (s[l + "Cov"] != null && s[l + "Reqs"] != null && s[l + "Cov"] > s[l + "Reqs"]) w.push({ sheet: "Weekly_Snapshot", msg: `W/E ${s.weekEnding}: ${l} risk covered requirements exceed total requirements.` }); });
       if (s.tdDone != null && s.tdTotal != null && s.tdDone > s.tdTotal) w.push({ sheet: "Weekly_Snapshot", msg: `W/E ${s.weekEnding}: automated test-data setups exceed automatable.` });
       if (D.dow(s.weekEnding) !== 5) w.push({ sheet: "Weekly_Snapshot", msg: `W/E ${s.weekEnding} is not a Friday.` });
+      if (s.weekEnding > D.todayIso()) w.push({ sheet: "Weekly_Snapshot", msg: `W/E ${s.weekEnding} is in the future — it looks pre-filled. Reports open on the latest week that has already started, but this row still counts if you select it.` });
     });
-    const last = data.snapshots[data.snapshots.length - 1];
-    if (last) { const age = D.diff(last.weekEnding, today); if (age > 9) w.push({ sheet: "Weekly_Snapshot", msg: `Latest weekly snapshot is ${age} days old (W/E ${last.weekEnding}) — add this week's row.` }); }
+    const last = data.snapshots[data.snapshots.length - 1]; // staleness is judged against the real clock
+    if (last) { const age = D.diff(last.weekEnding, D.todayIso()); if (age > 9) w.push({ sheet: "Weekly_Snapshot", msg: `Latest weekly snapshot is ${age} days old (W/E ${last.weekEnding}) — add this week's row.` }); }
     data.milestones.forEach((m) => { if (m.completed && m.completed < D.add(m.due, -365)) w.push({ sheet: "Milestones", msg: `${m.name}: completed date looks wrong.` }); });
     return w;
   };

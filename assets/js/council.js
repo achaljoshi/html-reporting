@@ -148,14 +148,7 @@
       if (!data) { root.innerHTML = ATS.emptyCard(cfg.eyebrow); ATS.wireEmptyCard(root); return; }
       const list = periodList(data);
       if (!list.length) { root.innerHTML = ATS.emptyCard(cfg.eyebrow); ATS.wireEmptyCard(root); return; }
-      if (!state.key || !list.includes(state.key)) {
-        state.key = list[list.length - 1];
-        // monthly: don't default to a month that only has one or two weeks of data
-        if (cfg.kind === "month" && list.length > 1) {
-          const n = data.snapshots.filter((s) => s.weekEnding.slice(0, 7) === state.key).length;
-          if (n < 3) state.key = list[list.length - 2];
-        }
-      }
+      if (!state.key || !list.includes(state.key)) state.key = K.defaultKey(list, cfg.kind, [data.snapshots]);
       const period = periodOf(state.key);
       const all = K.computeAll(data, period, { raid: store.raid });
       const env = { data, raid: store.raid, poap: store.poap, period, all, prefix: cfg.id + "-", state, store,

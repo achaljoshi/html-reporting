@@ -101,7 +101,7 @@
 
 /* ---------- Gantt ---------- */
 .poap-gcard{position:relative;overflow:hidden;padding:0;}
-.poap-gscroll{position:relative;overflow:auto;height:clamp(520px,calc(100vh - 380px),900px);background:#fff;cursor:grab;overscroll-behavior:contain;}
+.poap-gscroll{position:relative;overflow:auto;height:clamp(520px,calc(100vh - 170px),1100px);background:#fff;cursor:grab;overscroll-behavior:contain;}
 .poap-gscroll.is-drag{cursor:grabbing;user-select:none;}
 .poap-gscroll:focus-visible{outline-offset:-2px;}
 .poap-gempty{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:#fff;}

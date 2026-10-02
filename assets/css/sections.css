@@ -224,3 +224,16 @@ table.data-table.sx-raid-table td{vertical-align:top;}
 
 .sx-stage,.sx-layout>*{min-width:0;}
 #main,#content{min-width:0;}
+
+/* topbar: keep title + controls on one row on laptop widths */
+#topbar > div:first-child{min-width:0;flex:1 1 auto;}
+#topbar .crumb{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.topbar-controls{flex-wrap:nowrap;flex:none;}
+.topbar-controls .btn{white-space:nowrap;}
+#portfolio-select{min-width:140px;max-width:230px;}
+@media (max-width:760px){#topbar{flex-wrap:wrap;}.topbar-controls{flex-wrap:wrap;}}
+
+/* heat-map: vertical KPI headers so all 16 columns fit on a laptop */
+.sx-hm th.sx-vh{height:78px;vertical-align:bottom;padding:2px 0 6px;}
+.sx-hm th.sx-vh span{display:inline-block;writing-mode:vertical-rl;transform:rotate(180deg);white-space:nowrap;font-size:9.5px;letter-spacing:.04em;}
+.sx-hm td.topic{min-width:130px;max-width:170px;}

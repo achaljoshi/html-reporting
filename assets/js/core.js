@@ -47,16 +47,27 @@
       }
       let s = String(v).trim();
       if (!s) return null;
-      if (/^\d{4}-\d{2}-\d{2}/.test(s)) return s.slice(0, 10);
+      // a real calendar date or nothing — never a malformed "2026-25-09" that would poison every later calculation
+      const out = (y, mo, d) => { const dt = new Date(Date.UTC(y, mo - 1, d)); return y >= 1990 && y <= 2100 && dt.getUTCFullYear() === y && dt.getUTCMonth() === mo - 1 && dt.getUTCDate() === d ? y + "-" + pad(mo) + "-" + pad(d) : null; };
+      let m = /^(\d{4})[-\/](\d{1,2})[-\/](\d{1,2})(?:[T\s].*)?$/.exec(s);
+      if (m) return out(+m[1], +m[2], +m[3]);
+      if (/^\d{5}(\.\d+)?$/.test(s)) return D.toIso(parseFloat(s)); // an Excel serial number stored as text
+      const MON = { jan: 1, feb: 2, mar: 3, apr: 4, may: 5, jun: 6, jul: 7, aug: 8, sep: 9, oct: 10, nov: 11, dec: 12 };
+      m = /^(?:[A-Za-z]{3,9},?\s+)?([A-Za-z]{3,9})\.?\s+(\d{1,2})(?:st|nd|rd|th)?,?\s+(\d{4})$/.exec(s); // "Sep 25, 2026"
+      if (m && MON[m[1].slice(0, 3).toLowerCase()]) return out(+m[3], MON[m[1].slice(0, 3).toLowerCase()], +m[2]);
       s = s.replace(/^[A-Za-z]{3,9},?\s+/, ""); // "Tue 16/06/26"
-      let m = /^(\d{1,2})[\/.\-](\d{1,2})[\/.\-](\d{2,4})$/.exec(s);
+      m = /^(\d{1,2})[\/.\-](\d{1,2})[\/.\-](\d{2,4})$/.exec(s);
       if (m) {
-        let y = +m[3];
+        let y = +m[3], a1 = +m[1], b1 = +m[2];
         if (y < 100) y += 2000;
-        return y + "-" + pad(+m[2]) + "-" + pad(+m[1]);
+        if (b1 > 12 && a1 <= 12) { const t = a1; a1 = b1; b1 = t; } // clearly month-first ("9/25/2026")
+        return out(y, b1, a1); // otherwise day-first (UK)
       }
-      const t = Date.parse(s);
-      return isNaN(t) ? null : D.iso(new Date(t));
+      m = /^(\d{1,2})[\s\-]([A-Za-z]{3,9})\.?[\s\-,]+(\d{2,4})$/.exec(s); // "25-Sep-2026"
+      if (m && MON[m[2].slice(0, 3).toLowerCase()]) { let y = +m[3]; if (y < 100) y += 2000; return out(y, MON[m[2].slice(0, 3).toLowerCase()], +m[1]); }
+      if (!/\d{4}/.test(s)) return null;
+      const t = Date.parse(s), iso = isNaN(t) ? null : D.iso(new Date(t));
+      return iso && +iso.slice(0, 4) >= 1990 && +iso.slice(0, 4) <= 2100 ? iso : null;
     },
     add(iso, n) { const d = D.parse(iso); d.setDate(d.getDate() + n); return D.iso(d); },
     diff(a, b) { return Math.round((D.parse(b) - D.parse(a)) / 86400000); }, // b - a in days
@@ -239,7 +250,7 @@
   ATS.on = (ev, fn) => { (listeners[ev] = listeners[ev] || []).push(fn); };
   ATS.emit = (ev, payload) => { (listeners[ev] || []).forEach((fn) => { try { fn(payload); } catch (e) { console.error(e); } }); };
 
-  ATS.VER = 7; // bump when parsed-data shape changes (invalidates cached data)
+  ATS.VER = 8; // bump when parsed-data shape changes (invalidates cached data)
   ATS.store = { portfolios: {}, order: [], current: null, kpi: null, poap: null, raid: null, meta: { source: "none", loadedAt: null, files: [] } };
 
   ATS.portfolioNames = () => ATS.store.order.slice();
