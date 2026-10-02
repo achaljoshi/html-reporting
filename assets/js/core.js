@@ -296,11 +296,8 @@
     ATS.emit("data");
     return true;
   };
-  ATS.isSample = function () {
-    const st = ATS.store;
-    if (st.meta.source === "sample") return true;
-    return st.order.some((n) => { const k = st.portfolios[n].kpi; return k && k.config && k.config.mode === "SAMPLE"; });
-  };
+  // Display marker for demo data is switched off on purpose (no "SAMPLE DATA" labels anywhere); data origin is still in store.meta.source
+  ATS.isSample = function () { return false; };
 
   // ------------------------------------------------------------------
   // Grouping parsed workbooks into portfolios (pure — also used by tools/build_sample_js.js)

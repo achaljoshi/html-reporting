@@ -535,7 +535,7 @@
     var a = dnParts(mn - 10); var z = dnParts(mx + 21);
     M.minDn = dnFromYMD(a.y, a.m + 1, 1);
     M.maxDn = dnFromYMD(z.y, z.m + 2, 1) - 1;
-    M.sample = !!((ctx && ctx.sampleMode) || cfg.mode === "SAMPLE");
+    M.sample = false;
     return M;
   }
 

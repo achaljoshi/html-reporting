@@ -80,7 +80,7 @@
     const head = names.length ? `<div class="side-file ok" style="color:#fff;font-weight:700;margin-bottom:2px">${names.length} portfolio${names.length === 1 ? "" : "s"} loaded</div>${st.current && current !== "programme" ? `<div class="side-file" style="margin-bottom:4px">Showing: <b style="color:#dbe6ff">${esc(st.current)}</b></div>` : ""}` : "";
     $("#side-files").innerHTML = head + (names.length && current !== "programme" ? files.map(([key, label]) => `<div class="side-file ${st[key] ? "ok" : ""}"><i></i>${esc(label)}</div>`).join("") : "");
     const when = meta.loadedAt ? new Date(meta.loadedAt).toLocaleString() : "";
-    $("#program-status").innerHTML = meta.source === "sample" ? "<b>Sample data</b> loaded — load your own folder to replace it." : meta.source === "folder" ? `Folder <b>${esc(meta.label || "")}</b><br>Loaded ${esc(when)}` : "No data loaded yet.";
+    $("#program-status").innerHTML = meta.source === "sample" ? "Demo data loaded — use <b>Load program folder</b> for your own." : meta.source === "folder" ? `Folder <b>${esc(meta.label || "")}</b><br>Loaded ${esc(when)}` : "No data loaded yet.";
   }
 
   // ------------------------------------------------------------------ loading
