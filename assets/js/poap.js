@@ -903,7 +903,8 @@
     RM.depG = RM.svg.querySelector(".poap-deps-g");
     RM.lines = h("div", { class: "poap-glines" });
     RM.track.appendChild(RM.grid); RM.track.appendChild(RM.rows); RM.track.appendChild(RM.lines); RM.track.appendChild(RM.svg); RM.track.appendChild(RM.items);
-    RM.body.appendChild(RM.labels); RM.body.appendChild(RM.track);
+    RM.hl = h("div", { class: "poap-hl", "aria-hidden": "true" });
+    RM.body.appendChild(RM.labels); RM.body.appendChild(RM.track); RM.body.appendChild(RM.hl);
     RM.canvas.appendChild(RM.head); RM.canvas.appendChild(RM.body);
     RM.sc.appendChild(RM.canvas);
     RM.card.appendChild(RM.sc);
@@ -955,6 +956,23 @@
       var b = ev.target.closest(".poap-bar"); if (b) { S.hoverId = b.getAttribute("data-id"); rmDrawDeps(); }
     });
     RM.items.addEventListener("focusout", function () { if (S.hoverId) { S.hoverId = null; rmDrawDeps(); } });
+    // row highlight: hover anywhere on an activity / item row (label or timeline) to light up the whole row
+    RM.body.addEventListener("mousemove", rafThrottle(function (ev) { rmHover(ev); }));
+    RM.body.addEventListener("mouseleave", function () { rmHl(null); });
+    RM.labels.addEventListener("mouseover", function (ev) {
+      var it = ev.target.closest(".poap-rl-item");
+      if (it) { var id = it.getAttribute("data-id"); if (S.hoverId !== id) { S.hoverId = id; rmDrawDeps(); } showTip(barTipHtml(S.model.byId[id]), ev); return; }
+      var ac = ev.target.closest(".poap-rl-act");
+      if (ac) { var tp = ac.querySelector(".poap-rl-name"); showTip('<div class="poap-tip-t">' + esc(tp ? tp.textContent : "") + " — " + esc(ac.querySelector(".poap-rl-meta").textContent) + "</div>", ev); }
+    });
+    RM.labels.addEventListener("mousemove", function (ev) { moveTip(ev); });
+    RM.labels.addEventListener("mouseout", function (ev) {
+      if (S.hoverId && ev.target.closest(".poap-rl-item")) { S.hoverId = null; rmDrawDeps(); }
+      if (!ev.relatedTarget || !ev.relatedTarget.closest || !ev.relatedTarget.closest(".poap-rl")) hideTip();
+    });
+    RM.labels.addEventListener("click", function (ev) {
+      var it = ev.target.closest(".poap-rl-item"); if (it) openDrawer("bar", it.getAttribute("data-id"));
+    });
     // labels: collapse/expand
     RM.labels.addEventListener("click", function (ev) {
       var l = ev.target.closest(".poap-lab"); if (!l) return;
@@ -968,7 +986,7 @@
     var drag = null;
     sc.addEventListener("pointerdown", function (ev) {
       if (ev.button !== 0) return;
-      if (ev.target.closest(".poap-bar,.poap-ms,.poap-lab,button,a,.poap-bsum")) return;
+      if (ev.target.closest(".poap-bar,.poap-ms,.poap-lab,.poap-rl,button,a,.poap-bsum")) return;
       drag = { x: ev.clientX, y: ev.clientY, sl: sc.scrollLeft, st: sc.scrollTop, id: ev.pointerId };
       RM.dragMoved = false;
     });
@@ -1021,6 +1039,26 @@
     // print: render everything
     window.addEventListener("beforeprint", function () { if (!RM.ready || !S.model) return; RM.printing = true; rmDraw(true); });
     window.addEventListener("afterprint", function () { RM.printing = false; if (RM.ready && S.model) { clearRendered(); rmDraw(); } });
+  }
+
+  // ---- row hover highlight -----------------------------------------
+  function rmHl(box) {
+    if (!RM.hl) return;
+    if (!box) { RM.hl.style.display = "none"; RM.hlKey = null; return; }
+    var k = box.top + ":" + box.h; if (RM.hlKey === k) return; RM.hlKey = k;
+    RM.hl.style.cssText = "display:block;top:" + box.top + "px;height:" + box.h + "px;--hc:" + (box.color || "#0ea5a0") + ";";
+    RM.hl.className = "poap-hl" + (box.group ? " is-group" : "");
+  }
+  function rmHover(ev) {
+    if (!RM.layout || RM.dragMoved) return;
+    var y = ev.clientY - RM.body.getBoundingClientRect().top, lanes = RM.layout.lanes, ln = null, i;
+    for (i = 0; i < lanes.length; i++) { if (y >= lanes[i].y && y < lanes[i].y + lanes[i].h) { ln = lanes[i]; break; } }
+    if (!ln || ln.kind !== "topic" || ln.collapsed || !ln.rowsList || y < ln.y + ln.msTop) { rmHl(null); return; }
+    var idx = Math.floor((y - ln.y - ln.msTop) / RM.rowH), rw = ln.rowsList[idx];
+    if (!rw) { rmHl(null); return; }
+    var top = ln.y + ln.msTop + idx * RM.rowH;
+    if (rw.kind === "act") rmHl({ top: top, h: (rw.n + 1) * RM.rowH, color: rw.color, group: true });
+    else rmHl({ top: top, h: RM.rowH, color: rw.b.color });
   }
 
   // ---- layout -----------------------------------------------------
@@ -1095,9 +1133,23 @@
         var lane = { kind: "topic", key: tkey, name: tn, pillar: pn, color: pcol, y: Y, bars: T.bars, ms: T.ms, collapsed: tcoll, n: T.bars.length, pct: weightedPct(T.bars), rag: worstRag(T.bars), items: [] };
         if (tcoll) { lane.h = RM.collH; lane.nsub = 1; lane.msTop = 0; }
         else {
-          lane.nsub = packLane(T.bars);
-          lane.msTop = T.ms.length ? RM.msH : 0;
-          lane.h = lane.msTop + lane.nsub * RM.rowH + 8;
+          // expanded: a summary strip (topic span + milestones), then one row per activity type and one row per item under it
+          var groups = {}, gorder = [], rowsList = [], rr = 0;
+          T.bars.forEach(function (b) {
+            if (!groups[b.type]) { groups[b.type] = { type: b.type, color: b.color, bars: [] }; gorder.push(b.type); }
+            groups[b.type].bars.push(b);
+          });
+          gorder.sort(function (a, b) { return Math.min.apply(null, groups[a].bars.map(function (x) { return x.ps; })) - Math.min.apply(null, groups[b].bars.map(function (x) { return x.ps; })); });
+          gorder.forEach(function (tn2) {
+            var g = groups[tn2];
+            g.bars.sort(function (a, b) { return a.ps - b.ps || a.pe - b.pe; });
+            rowsList.push({ kind: "act", type: g.type, color: g.color, n: g.bars.length, pct: weightedPct(g.bars), rag: worstRag(g.bars), smin: Math.min.apply(null, g.bars.map(function (x) { return x.ps; })), smax: Math.max.apply(null, g.bars.map(function (x) { return x.pe; })), row: rr });
+            rr++;
+            g.bars.forEach(function (b) { b.sub = rr; rowsList.push({ kind: "item", b: b, row: rr }); rr++; });
+          });
+          lane.rowsList = rowsList; lane.nsub = rr;
+          lane.msTop = RM.collH;
+          lane.h = lane.msTop + rr * RM.rowH + 8;
         }
         T.bars.forEach(function (b) {
           lane.items.push({ b: b, x: (b.ps - minDn) * pxd, w: Math.max((b.pe - b.ps + 1) * pxd, 5), row: tcoll ? 0 : b.sub });
@@ -1303,7 +1355,7 @@
     el.setAttribute("data-key", ln.key); el.setAttribute("role", "button"); el.setAttribute("tabindex", "0");
     el.setAttribute("aria-expanded", open ? "true" : "false");
     el.setAttribute("aria-label", (open ? "Collapse " : "Expand ") + ln.name);
-    el.style.cssText = "top:" + ln.y + "px;height:" + ln.h + "px;--pc:" + ln.color + ";";
+    el.style.cssText = "top:" + ln.y + "px;height:" + (ln.kind === "topic" && !ln.collapsed ? ln.msTop : ln.h) + "px;--pc:" + ln.color + ";";
     var rag = ln.rag ? '<i class="poap-rag poap-rag-' + ln.rag.toLowerCase() + '" title="Worst RAG: ' + ln.rag + '"></i>' : "";
     if (ln.kind === "pillar") {
       el.innerHTML = '<span class="poap-chev">' + ICON.chev + '</span><i class="poap-pdot"></i><span class="poap-lab-name">' + esc(ln.name) + '</span><span class="poap-lab-meta">' + ln.n + " · " + Math.round(ln.pct * 100) + "%</span>" + lanePctRing(ln.pct, ln.color);
@@ -1368,6 +1420,54 @@
           }
         });
       } else if (ln.kind === "topic") {
+        // topic span strip
+        if (ln.bars.length) {
+          var tk = "ts:" + ln.key; used.items[tk] = 1;
+          if (!R.items[tk]) {
+            var tmin = Math.min.apply(null, ln.bars.map(function (b) { return b.ps; })), tmax = Math.max.apply(null, ln.bars.map(function (b) { return b.pe; }));
+            var te = document.createElement("div"); te.className = "poap-bsum poap-tsum";
+            te.setAttribute("data-tip", ln.name + " · " + plural(ln.n, "activity").replace("activitys", "activities") + " · " + Math.round(ln.pct * 100) + "% complete · " + fmtD(tmin, true) + " – " + fmtD(tmax));
+            te.style.cssText = "left:" + ((tmin - minDn) * pxd) + "px;top:" + (ln.y + ln.msTop - 9) + "px;width:" + Math.max((tmax - tmin + 1) * pxd, 6) + "px;--pc:" + ln.color + ";";
+            te.innerHTML = '<i style="width:' + Math.round(ln.pct * 100) + '%"></i>';
+            R.items[tk] = te; fragI.appendChild(te);
+          }
+        }
+        // one label + guide row per activity header / item
+        (ln.rowsList || []).forEach(function (rw) {
+          var ry = ln.y + ln.msTop + rw.row * RM.rowH;
+          if (ry + RM.rowH < y0 || ry > y1) return;
+          var lk = "rl:" + ln.key + ":" + rw.row; used.labels[lk] = 1;
+          if (!R.labels[lk]) {
+            var le = document.createElement("div");
+            le.className = "poap-rl poap-rl-" + rw.kind; le.style.cssText = "top:" + ry + "px;height:" + RM.rowH + "px;" + (rw.kind === "act" ? "--tc:" + rw.color + ";" : colVars(rw.b.color));
+            if (rw.kind === "act") {
+              le.setAttribute("data-act", ln.key + ":" + rw.row);
+              le.innerHTML = '<i class="poap-rl-dot"></i><span class="poap-rl-name">' + esc(rw.type) + '</span><span class="poap-rl-meta">' + rw.n + " · " + Math.round(rw.pct * 100) + "%</span>";
+            } else {
+              var b = rw.b;
+              le.setAttribute("data-id", b.id); le.setAttribute("role", "button"); le.setAttribute("tabindex", "0");
+              le.innerHTML = (b.rag ? '<i class="poap-rag poap-rag-' + b.rag.toLowerCase() + '"></i>' : '<i class="poap-rag poap-rag-none"></i>') + '<span class="poap-rl-name" title="' + esc(b.item) + '">' + esc(b.item) + "</span>" +
+                '<span class="poap-rl-meta">' + (b.s != null ? fmtD(b.s, true) : "TBC") + "</span>";
+            }
+            R.labels[lk] = le; fragL.appendChild(le);
+          }
+          var gk = "rg:" + ln.key + ":" + rw.row; used.rows[gk] = 1;
+          if (!R.rows[gk]) {
+            var ge2 = document.createElement("div"); ge2.className = "poap-rg poap-rg-" + rw.kind;
+            ge2.style.cssText = "top:" + ry + "px;height:" + RM.rowH + "px;--tc:" + (rw.kind === "act" ? rw.color : "transparent") + ";";
+            R.rows[gk] = ge2; fragR.appendChild(ge2);
+          }
+          if (rw.kind === "act") {
+            var ak = "as:" + ln.key + ":" + rw.row; used.items[ak] = 1;
+            if (!R.items[ak]) {
+              var ae = document.createElement("div"); ae.className = "poap-bsum poap-asum";
+              ae.setAttribute("data-tip", rw.type + " · " + plural(rw.n, "item") + " · " + Math.round(rw.pct * 100) + "% complete · " + fmtD(rw.smin, true) + " – " + fmtD(rw.smax));
+              ae.style.cssText = "left:" + ((rw.smin - minDn) * pxd) + "px;top:" + (ry + RM.rowH / 2 - 3) + "px;width:" + Math.max((rw.smax - rw.smin + 1) * pxd, 6) + "px;--pc:" + rw.color + ";";
+              ae.innerHTML = '<i style="width:' + Math.round(rw.pct * 100) + '%"></i>';
+              R.items[ak] = ae; fragI.appendChild(ae);
+            }
+          }
+        });
         ln.items.forEach(function (it) {
           if (it.x + it.w < x0 || it.x > x1) return;
           var bk = "b:" + it.b.id; used.items[bk] = 1;
@@ -1379,7 +1479,7 @@
         });
       }
       // milestones
-      var cy = ln.kind === "pillar" ? ln.y + ln.h / 2 : (ln.collapsed ? ln.y + ln.h / 2 : ln.y + RM.msH / 2 + 1);
+      var cy = ln.kind === "pillar" ? ln.y + ln.h / 2 : (ln.collapsed ? ln.y + ln.h / 2 : ln.y + ln.msTop / 2 - 3);
       ln.ms.forEach(function (m) {
         if (m._x + 20 < x0 || m._x - 8 > x1) return;
         var mk = "m:" + m.id; used.items[mk] = 1;

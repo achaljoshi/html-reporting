@@ -404,3 +404,22 @@ body.poap-drawer-open .poap-tip{z-index:130;}
 .poap-resgrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:4px;width:172px;}
 .poap-resgrid .poap-res{flex-direction:row;align-items:center;gap:6px;min-width:0;padding:2px 8px;font-size:11px;}
 .poap-resgrid .poap-res em{font-size:9.5px;}
+
+/* ---- expanded topic: one row per activity type and per item, row highlight on hover ---- */
+.poap-rl{position:absolute;left:0;right:0;display:flex;align-items:center;gap:8px;background:#fff;border-bottom:1px solid #f0f2f7;box-sizing:border-box;min-width:0;}
+.poap-rl-act{padding:0 12px 0 28px;background:linear-gradient(90deg,color-mix(in srgb,var(--tc) 9%,#fff),#fff);font-weight:800;color:var(--poap-ink);font-size:11.5px;letter-spacing:.01em;border-bottom:1px solid #e6eaf2;}
+.poap-rl-act .poap-rl-dot{width:9px;height:9px;border-radius:3px;background:var(--tc);flex:none;}
+.poap-rl-item{padding:0 12px 0 44px;cursor:pointer;font-size:11.5px;color:var(--ink);}
+.poap-rl-item:hover{color:#000;}
+.poap-rl-name{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.poap-rl-meta{font-size:10.5px;color:var(--poap-mut);font-weight:700;white-space:nowrap;flex:none;}
+.poap-rl-item .poap-rag{flex:none;}
+.poap-rag-none{width:8px;height:8px;border-radius:50%;background:#d0d5dd;display:inline-block;}
+.poap-rg{position:absolute;left:0;right:0;border-bottom:1px dotted #dfe4ee;pointer-events:none;box-sizing:border-box;}
+.poap-rg-act{background:color-mix(in srgb,var(--tc) 7%,transparent);border-bottom:1px solid #e6eaf2;}
+.poap-asum{height:6px;border-radius:4px;background:color-mix(in srgb,var(--pc) 22%,#fff);border:1px solid color-mix(in srgb,var(--pc) 55%,#fff);}
+.poap-asum i{background:var(--pc);}
+.poap-tsum{height:5px;border-radius:3px;}
+.poap-hl{display:none;position:absolute;left:0;right:0;z-index:7;pointer-events:none;background:color-mix(in srgb,var(--hc,#0ea5a0) 16%,transparent);box-shadow:inset 3px 0 0 var(--hc,#0ea5a0),inset 0 1px 0 color-mix(in srgb,var(--hc,#0ea5a0) 45%,transparent),inset 0 -1px 0 color-mix(in srgb,var(--hc,#0ea5a0) 45%,transparent);}
+.poap-hl.is-group{background:color-mix(in srgb,var(--hc,#0ea5a0) 11%,transparent);}
+@media print{.poap-hl{display:none !important;}}
