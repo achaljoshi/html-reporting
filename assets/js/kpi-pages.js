@@ -127,12 +127,45 @@
     const mn = dates.reduce((a, b) => (a < b ? a : b)), mx = dates.reduce((a, b) => (a > b ? a : b));
     const span = Math.max(1, D.diff(mn, mx)), pos = (iso) => Math.max(1, Math.min(99, (D.diff(mn, iso) / span) * 100));
     const asOf = ctx.all.asOf, todayPos = pos(asOf < mn ? mn : asOf > mx ? mx : asOf);
-    const ribbon = `<div class="sx-ribbon"><div class="line"></div><div class="done" style="width:${todayPos}%"></div><div class="today" style="left:${todayPos}%"></div>
-      ${ev.map((e, i) => `<div class="sx-ms ${i % 2 ? "up" : ""}" style="left:${pos(e.m.due)}%;color:${ragFill(e.rag)}" title="${esc(e.m.name)} — due ${D.fmt(e.m.due)} — ${esc(e.status)}${e.delay ? " (" + e.delay + "d)" : ""}"><b>${D.fmt(e.m.due, false)}</b><i></i><span>${esc(e.m.name.length > 28 ? e.m.name.slice(0, 27) + "…" : e.m.name)}</span></div>`).join("")}</div>`;
+    const ribbon = `<div class="sx-ribbon2" id="${p}ribbon"></div>`;
     const left = `<div class="sx-stats">${U.stat(N.pct(d.adherence), "Adherence", U.deltaChip(res))}${U.stat(d.completed + d.late, "Completed")}${U.stat(d.onSched, "On schedule")}${U.stat(d.overdue, "Overdue")}${U.stat(d.critDelay + "d", "Critical delay")}</div>
-      <div><div class="sx-ctitle">Milestone timeline <span class="sx-csub">· colour = RAG, line = today</span></div>${ribbon}</div>
+      <div><div class="sx-ctitle">Milestone timeline <span class="sx-csub">· colour = RAG, line = today · hover for detail</span></div>${ribbon}</div>
       ${U.table(["Milestone", "Due", "Forecast", "Completed", "Status", "RAG"], ev.map((e) => [esc(e.m.name) + (e.m.critical ? ' <span class="chip red" style="padding:0 6px">critical</span>' : ""), D.fmt(e.m.due, false), e.m.forecast ? D.fmt(e.m.forecast, false) : "—", e.m.completed ? D.fmt(e.m.completed, false) : "—", esc(e.status) + (e.delay ? ` (${e.delay}d)` : ""), R.chip(e.rag)]), { wrap: true })}`;
-    return { left, draw() {} };
+    return {
+      left,
+      draw(root) {
+        const el = root.querySelector("#" + p + "ribbon"); if (!el) return;
+        const paint = () => {
+          const W = el.clientWidth || 800, LH = 40, DOT = 12;
+          const items = ev.map((e) => { const nm = e.m.name.length > 40 ? e.m.name.slice(0, 39) + "…" : e.m.name; return { e, x: (pos(e.m.due) / 100) * W, name: nm, w: Math.min(120, Math.max(76, Math.min(nm.length, 30) * 4.4 + 12)) }; }).sort((a, b) => a.x - b.x);
+          // lane assignment: first lane (nearest the axis first) where the label does not touch the previous one
+          const order = [["down", 0], ["up", 0], ["down", 1], ["up", 1], ["down", 2], ["up", 2], ["down", 3], ["up", 3]], end = {};
+          items.forEach((it) => {
+            it.left = Math.max(0, Math.min(W - it.w, it.x - it.w / 2));
+            let best = null;
+            for (const L of order) { const k = L.join(); const e0 = end[k] == null ? -1e9 : end[k]; if (it.left >= e0 + 8) { best = L; break; } }
+            if (!best) best = order.reduce((m, L) => ((end[L.join()] || -1e9) < (end[m.join()] || -1e9) ? L : m), order[0]);
+            it.side = best[0]; it.lvl = best[1]; end[best.join()] = it.left + it.w;
+          });
+          const maxUp = items.filter((i) => i.side === "up").reduce((m, i) => Math.max(m, i.lvl + 1), 0), maxDown = items.filter((i) => i.side === "down").reduce((m, i) => Math.max(m, i.lvl + 1), 0);
+          const upH = maxUp * LH + (maxUp ? 8 : 0), axis = upH + 14, H = axis + 14 + maxDown * LH + (maxDown ? 6 : 0);
+          el.style.height = H + "px";
+          let h = `<div class="line" style="top:${axis - 2}px"></div><div class="done" style="top:${axis - 2}px;width:${todayPos}%"></div><div class="today" style="left:${todayPos}%;top:${axis - 14}px"></div>`;
+          items.forEach((it) => {
+            const col = ragFill(it.e.rag), up = it.side === "up";
+            const top = up ? axis - 10 - (it.lvl + 1) * LH + 2 : axis + 12 + it.lvl * LH;
+            const cTop = up ? top + LH - 6 : axis + DOT / 2, cH = up ? axis - (top + LH - 6) - DOT / 2 : top - (axis + DOT / 2);
+            const tip = `${it.e.m.name} — due ${D.fmt(it.e.m.due)} — ${it.e.status}${it.e.delay ? " (" + it.e.delay + "d)" : ""}`;
+            h += `<div class="sx-mc" style="left:${it.x}px;top:${cTop}px;height:${Math.max(0, cH)}px;background:${col}"></div>
+              <div class="sx-md" style="left:${it.x}px;top:${axis - DOT / 2}px;color:${col}" title="${esc(tip)}"></div>
+              <div class="sx-ml ${up ? "up" : ""}" style="left:${it.left}px;top:${top}px;width:${it.w}px;height:${LH - 8}px" title="${esc(tip)}"><b>${D.fmt(it.e.m.due, false)}</b><span>${esc(it.name)}</span></div>`;
+          });
+          el.innerHTML = h;
+        };
+        paint();
+        if (window.ResizeObserver) { let w0 = el.clientWidth; new ResizeObserver(() => { if (el.clientWidth && Math.abs(el.clientWidth - w0) > 8) { w0 = el.clientWidth; paint(); } }).observe(el); }
+      },
+    };
   };
 
   // ---------------------------------------------------------------- TSR
