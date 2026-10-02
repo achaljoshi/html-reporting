@@ -286,31 +286,24 @@
     return { left, draw() {} };
   };
 
-  // ---------------------------------------------------------------- RAID
+  // ---------------------------------------------------------------- RAID (overview; each log has its own page)
   P.raid = function (res, ctx) {
     const s = res.detail, p = ctx.prefix;
     if (res.empty) return { left: U.noData("RAID log not loaded"), draw() {} };
-    const left = `<div class="sx-stats">${U.stat(s.openRisks, "Open risks")}${U.stat(s.openIssues, "Open issues")}${U.stat(s.openDeps, "Open dependencies")}${U.stat(s.unconfirmedAssumptions, "Unconfirmed assumptions")}${U.stat(s.decisionsPending, "Pending decisions")}${U.stat(s.veryHigh + s.high, "High / Very High")}</div>
-      <div class="sx-grid2"><div><div class="sx-ctitle">Risk heat-map <span class="sx-csub">· open risks, click a cell</span></div><div id="${p}raid-heat">${ATS.raid.heatmap(s.risksOpen)}</div></div>
-      <div><div class="sx-ctitle">Open risks by rating</div>${ATS.raid.bandBars(s.riskBands)}<div class="sx-ctitle" style="margin-top:14px">Open issues by rating</div>${ATS.raid.bandBars(s.issueBands)}</div></div>
-      <div id="${p}raid-list"><div class="sx-ctitle">Top risks</div>${ATS.raid.riskTable(s.topRisks)}</div>
-      <div><div class="sx-ctitle">Open issues</div>${ATS.raid.issueTable(s.topIssues)}</div>
-      <div><div class="sx-ctitle">Dependencies needed in the next 30 days</div>${ATS.raid.depTable(s.depsDue.slice(0, 8))}</div>
-      <div><div class="sx-ctitle">Decisions <span class="sx-csub">· ${s.decisionsPending} pending · ${s.decisionsInPeriod} taken in this period · ${s.decisionsTotal} logged</span></div>${ATS.raid.decisionTable(s.pendingDecisions.concat(s.recentDecisions).slice(0, 8), { why: true })}</div>`;
-    return {
-      left,
-      draw(root) {
-        const heat = root.querySelector("#" + p + "raid-heat"), list = root.querySelector("#" + p + "raid-list");
-        if (!heat) return;
-        heat.addEventListener("click", (e) => {
-          const b = e.target.closest(".sx-heat-cell"); if (!b) return;
-          const l = +b.dataset.l, i = +b.dataset.i;
-          const sel = s.risksOpen.filter((r) => r.l === l && r.i === i);
-          list.innerHTML = `<div class="sx-ctitle">Risks at likelihood ${l} × impact ${i} (${sel.length}) <button class="btn btn-outline btn-sm" id="${p}raid-reset" style="margin-left:8px">Show top risks</button></div>${ATS.raid.riskTable(sel, { titleLen: 160, mitLen: 220 })}`;
-          const rb = list.querySelector("#" + p + "raid-reset");
-          if (rb) rb.onclick = () => { list.innerHTML = `<div class="sx-ctitle">Top risks</div>${ATS.raid.riskTable(s.topRisks)}`; };
-        });
-      },
-    };
+    const raid = ctx.raid || {};
+    const cards = [
+      ["risks", "Risks", s.openRisks, `open · ${s.riskBands.filter((b) => /High/.test(b.label)).reduce((a, b) => a + b.n, 0)} High / Very High`],
+      ["issues", "Issues", s.openIssues, `open · ${s.issueBands.filter((b) => /High/.test(b.label)).reduce((a, b) => a + b.n, 0)} High / Very High`],
+      ["assumptions", "Assumptions", s.unconfirmedAssumptions, `unconfirmed of ${(raid.assumptions || []).filter((a) => !a.archived).length}`],
+      ["deps", "Dependencies", s.openDeps, `open · ${s.depsDue.length} needed in 30 days`],
+      ["decisions", "Decisions", s.decisionsPending || 0, `pending of ${s.decisionsTotal || 0} logged`],
+    ];
+    const attention = s.risksOpen.filter((r) => /High/.test(r.rating)).map((r) => ({ kind: "Risk", id: r.id, title: r.title, rating: r.rating, owner: r.owner, score: r.score || 0 }))
+      .concat(s.issuesOpen.filter((i) => /High/.test(i.rating)).map((i) => ({ kind: "Issue", id: i.id, title: i.title, rating: i.rating, owner: i.owner, score: i.score || 0 }))).sort((a, b) => b.score - a.score);
+    const left = `<div class="sx-ctitle">The RAID log at a glance <span class="sx-csub">· click a card to open its page</span></div>
+      <div class="sx-stats">${cards.map((c) => `<button type="button" class="sx-stat" data-go="${c[0]}" style="text-align:left;cursor:pointer"><b>${c[2]}</b><span>${esc(c[1])}</span><small class="sx-dim" style="display:block;margin-top:2px">${esc(c[3])}</small></button>`).join("")}</div>
+      <div class="sx-grid2"><div><div class="sx-ctitle">Open risks by rating</div>${ATS.raid.bandBars(s.riskBands)}</div><div><div class="sx-ctitle">Open issues by rating</div>${ATS.raid.bandBars(s.issueBands)}</div></div>
+      <div><div class="sx-ctitle">Needs attention <span class="sx-csub">· open High / Very High risks and issues</span></div>${attention.length ? U.table(["Type", "ID", "Item", "Rating", "Owner"], attention.slice(0, 8).map((a) => [esc(a.kind), `<b>${esc(a.id)}</b>`, esc(a.title.length > 120 ? a.title.slice(0, 119) + "…" : a.title), ATS.raid.ratingChip(a.rating), esc(a.owner)]), { wrap: true }) : '<div class="sx-empty-note">No High or Very High risks or issues are open.</div>'}</div>`;
+    return { left, draw(root) { root.querySelectorAll("[data-go]").forEach((b) => (b.onclick = () => ctx.open(b.dataset.go))); } };
   };
 })();

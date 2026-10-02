@@ -18,8 +18,10 @@
       const add = (group, p) => { p.group = group; pg.push(p); };
       add("Overview", { id: "scorecard", label: "Overall Dashboard", render: (e) => ATS.pages.scorecard(e, { mode: e.state.scMode, title: "Overall Dashboard", eyebrow: "ATS Performance Scorecard (KPIs / Metrics)" }) });
       add("Overview", { id: "history", label: "RAG History", render: (e) => ATS.pages.ragHistory(e, { eyebrow: "Month-over-month", title: "RAG History by Month", extra: false }) });
-      add("Risks, Issues & Lessons", Object.assign(kpiPage("raid", "Risks, Issues and Lessons Learned (1/2)", "Risks & Issues", "1/2", "Risks & Issues"), {}));
-      add("Risks, Issues & Lessons", { id: "lessons", label: "Lessons Learned", n: "2/2", render: (e) => ATS.pages.lessons(e) });
+      const G = "Risks, Issues & Lessons";
+      add(G, Object.assign(kpiPage("raid", "RAID Overview", "RAID Overview", "1/7", "RAID Overview"), {}));
+      ATS.raidPageList.forEach((rp, i) => add(G, Object.assign({}, rp, { n: i + 2 + "/7" })));
+      add(G, { id: "lessons", label: "Lessons Learned", n: "7/7", render: (e) => ATS.pages.lessons(e) });
       const monthly = [["coverage", "Risk Based Test Coverage"], ["dde", "Defect Detection"], ["environment", "Test Execution Downtime"], ["aging", "Defect Aging"], ["milestones", "Test Milestone Delivery"], ["tsr", "TSR Impact Assessment"]];
       monthly.forEach(([k, label], i) => add("Monthly Metrics", kpiPage(k, `Monthly Metrics – ${i + 1}/${monthly.length}`, label, `${i + 1}/${monthly.length}`)));
       const quarterly = [["leakage", "Defect Leakage into Production"], ["csat", "Customer Satisfaction (CSAT)"], ["automation", "Automation Coverage"]];

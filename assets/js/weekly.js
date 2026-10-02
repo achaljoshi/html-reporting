@@ -131,7 +131,8 @@
       add("Quality", kpiPage("coverage", "Quality — Risk Based Coverage", "Risk Based Coverage"));
       add("Quality", kpiPage("environment", "Quality — Test Environment", "Test Environment"));
       add("Quality", kpiPage("automation", "Quality — Automation", "Automation"));
-      add("Governance", kpiPage("raid", "Governance — RAID", "RAID Log"));
+      add("Governance", kpiPage("raid", "Governance — RAID Overview", "RAID Overview"));
+      ATS.raidPageList.forEach((rp) => add("Governance", Object.assign({}, rp)));
       add("Governance", kpiPage("tsr", "Governance — TSR Impact Assessment", "TSR Impact"));
       add("Commercial", kpiPage("commercial", "Commercials", "Commercials"));
       add("Commercial", kpiPage("resource", "Resourcing", "Resourcing"));

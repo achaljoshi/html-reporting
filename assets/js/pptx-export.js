@@ -191,36 +191,46 @@
 
   function lessonsSlide(deck, env) {
     const rows = [hdrRow(["Date", "Category", "Lesson Learned", "Improvement Action", "Owner", "Status"])].concat(env.data.lessons.slice(0, 9).map((l) => [D.fmt(l.date, false), l.category, clip(l.lesson, 170), clip(l.action, 170), l.owner, l.status].map((t) => cellText(t || "", { fontSize: 10.5 }))));
-    tableSlide(deck, env, "Risks, Issues, and Lessons Learned (2/2)", "Lessons Learned (Post Transition)", rows, [0.85, 1.2, 4.0, 3.65, 1.05, 0.75], { y: 1.3, rowH: 0.6 });
+    tableSlide(deck, env, "Risks, Issues, and Lessons Learned", "Lessons Learned (Post Transition)", rows, [0.85, 1.2, 4.0, 3.65, 1.05, 0.75], { y: 1.3, rowH: 0.6 });
   }
 
-  function raidSlides(deck, env, res) {
-    const d = res.detail;
-    const s = newSlide(deck, "Risks, Issues, and Lessons Learned (1/2)", null, { foot: stamp(env) });
-    s.addText("Key Risks (Open Items)", { x: 0.74, y: 0.78, w: 4, h: 0.3, fontSize: 14, bold: false, underline: { style: "sng" }, margin: 0, isTextBox: true });
-    const risks = d.topRisks.slice(0, 4);
-    s.addTable([hdrRow(["ID", "Risk", "Impact", "Mitigation", "RAG"], { center: [4] })].concat(risks.map((r) => [
-      cellText(r.id, { fontSize: 9, bold: true }), cellText(clip(r.title, 120), { fontSize: 10 }), cellText(r.rating || "", { fontSize: 10 }), cellText(clip(r.mitigation, 170), { fontSize: 10 }), ragCell(ragOf(r.rating))])),
-    { x: 0.74, y: 1.1, w: 11.49, colW: [0.6, 4.2, 1.0, 5.0, 0.69], rowH: 0.36, valign: "middle" });
-    const yI = 1.1 + 0.36 * (risks.length + 1) + 0.42;
-    s.addText("Current Issues", { x: 0.74, y: yI - 0.34, w: 3, h: 0.3, fontSize: 14, underline: { style: "sng" }, margin: 0, isTextBox: true });
-    const issues = d.topIssues.slice(0, 4);
-    s.addTable([hdrRow(["ID", "Issue", "Status", "Rating", "Owner", "Target"])].concat((issues.length ? issues : [{ id: "–", title: "No open issues", status: "", rating: "", owner: "", target: null }]).map((r) => [
-      cellText(r.id, { fontSize: 9, bold: true }), cellText(clip(r.title, 120), { fontSize: 10 }), cellText(r.status, { fontSize: 10 }), cellText(r.rating || "", { fontSize: 10 }), cellText(clip(r.owner, 26), { fontSize: 10 }), cellText(r.target ? D.fmt(r.target, false) : "", { fontSize: 10 })])),
-    { x: 0.74, y: yI, w: 11.49, colW: [0.6, 5.1, 1.7, 1.0, 2.0, 1.09], rowH: 0.34, valign: "middle" });
-    // dependencies + decisions
-    const s2 = newSlide(deck, "Dependencies and Decisions", "RAID log — next 30 days and decision log", { foot: stamp(env) });
-    s2.addText("Dependencies needed in the next 30 days", { x: 0.74, y: 1.15, w: 6, h: 0.3, fontSize: 14, underline: { style: "sng" }, margin: 0, isTextBox: true });
-    const deps = d.depsDue.slice(0, 5);
-    s2.addTable([hdrRow(["ID", "Dependency", "Priority", "Needed by", "From", "Owner"])].concat((deps.length ? deps : [{ id: "–", desc: "None due in the next 30 days", priority: "", required: null, from: "", owner: "" }]).map((r) => [
-      cellText(r.id, { fontSize: 9, bold: true }), cellText(clip(r.desc, 110), { fontSize: 10 }), cellText(r.priority, { fontSize: 10 }), cellText(r.required ? D.fmt(r.required, false) : "TBC", { fontSize: 10 }), cellText(clip(r.from, 26), { fontSize: 10 }), cellText(clip(r.owner, 24), { fontSize: 10 })])),
-    { x: 0.74, y: 1.5, w: 11.49, colW: [0.6, 5.0, 1.0, 1.1, 2.0, 1.79], rowH: 0.34, valign: "middle" });
-    const yD = 1.5 + 0.34 * (Math.max(deps.length, 1) + 1) + 0.5;
-    s2.addText(`Decisions — ${d.decisionsPending || 0} pending, ${d.decisionsInPeriod || 0} taken in this period`, { x: 0.74, y: yD - 0.36, w: 8, h: 0.3, fontSize: 14, underline: { style: "sng" }, margin: 0, isTextBox: true });
-    const decs = (d.pendingDecisions || []).concat(d.recentDecisions || []).slice(0, 6);
-    s2.addTable([hdrRow(["ID", "Decision", "Status", "Decided", "By / forum", "Owner"])].concat((decs.length ? decs : [{ id: "–", title: "No decisions logged", status: "", decided: null, maker: "", owner: "" }]).map((r) => [
-      cellText(r.id, { fontSize: 9, bold: true }), cellText(clip(r.title, 100), { fontSize: 10 }), cellText(r.status, { fontSize: 10 }), cellText(r.decided ? D.fmt(r.decided, false) : "", { fontSize: 10 }), cellText(clip(r.maker, 26), { fontSize: 10 }), cellText(clip(r.owner, 24), { fontSize: 10 })])),
-    { x: 0.74, y: yD, w: 11.49, colW: [0.7, 5.0, 1.1, 1.1, 1.9, 1.69], rowH: 0.32, valign: "middle" });
+  // one slide per RAID sheet (open items first), in the template's table style
+  function raidKindSlide(deck, env, kind) {
+    const raid = env.raid; if (!raid) return;
+    const RA = ATS.raid, asOf = env.all.asOf, base = progName(env);
+    const t = (v, o) => cellText(v == null ? "" : v, Object.assign({ fontSize: 10 }, o || {}));
+    const dt = (d) => (d ? D.fmt(d, false) : "");
+    let title, sub, head, rows, colW;
+    if (kind === "risks") {
+      const open = raid.risks.filter((r) => !r.archived && RA.isOpenRisk(r)).sort((a, b) => (b.score || 0) - (a.score || 0));
+      title = "Key Risks (Open Items)"; sub = `${open.length} open · ${open.filter((r) => /High/.test(r.rating)).length} High / Very High`;
+      head = hdrRow(["ID", "Risk", "Impact", "Status", "Owner", "Mitigation", "RAG"], { center: [6] }); colW = [0.6, 3.3, 0.95, 0.95, 1.5, 3.5, 0.69];
+      rows = open.slice(0, 8).map((r) => [t(r.id, { bold: true }), t(clip(r.title, 100)), t(r.rating), t(r.status), t(clip(r.owner, 22)), t(clip(r.mitigation, 150), { fontSize: 9 }), ragCell(ragOf(r.rating))]);
+    } else if (kind === "issues") {
+      const open = raid.issues.filter((i) => !i.archived && RA.isOpenIssue(i)).sort((a, b) => (b.score || 0) - (a.score || 0));
+      title = "Current Issues"; sub = `${open.length} open · ${open.filter((i) => i.target && i.target < asOf).length} past target date`;
+      head = hdrRow(["ID", "Issue", "Rating", "Status", "Owner", "Reported", "Target"]); colW = [0.6, 4.3, 0.95, 1.6, 1.8, 1.1, 1.1];
+      rows = open.slice(0, 9).map((i) => [t(i.id, { bold: true }), t(clip(i.title, 110)), t(i.rating), t(i.status), t(clip(i.owner, 24)), t(dt(i.reported)), t(dt(i.target))]);
+    } else if (kind === "assumptions") {
+      const open = raid.assumptions.filter((a) => !a.archived && /unconfirmed/i.test(a.status)).sort((a, b) => ((a.due || "9999") < (b.due || "9999") ? -1 : 1));
+      title = "Assumptions"; sub = `${open.length} unconfirmed · ${open.filter((a) => a.due && a.due < asOf).length} validation(s) overdue`;
+      head = hdrRow(["ID", "Assumption", "Confidence", "Impact if incorrect", "Validation action", "Due"]); colW = [0.6, 3.6, 1.0, 2.7, 2.6, 1.0];
+      rows = open.slice(0, 8).map((a) => [t(a.id, { bold: true }), t(clip(a.desc, 120)), t(a.confidence), t(clip(a.impact, 90), { fontSize: 9 }), t(clip(a.validation, 90), { fontSize: 9 }), t(dt(a.due))]);
+    } else if (kind === "deps") {
+      const open = raid.deps.filter((d) => !d.archived && RA.isOpenDep(d)).sort((a, b) => ((a.required || "9999") < (b.required || "9999") ? -1 : 1));
+      title = "Dependencies"; sub = `${open.length} open · ${open.filter((d) => d.required && d.required < asOf).length} overdue`;
+      head = hdrRow(["ID", "Dependency", "Priority", "Needed by", "From", "Owner"]); colW = [0.6, 4.7, 1.0, 1.1, 2.1, 2.0];
+      rows = open.slice(0, 9).map((d) => [t(d.id, { bold: true }), t(clip(d.desc, 120)), t(d.priority), t(d.required ? dt(d.required) : "TBC"), t(clip(d.from, 28)), t(clip(d.owner, 26))]);
+    } else {
+      const all = (raid.decisions || []).filter((d) => !d.archived);
+      if (!all.length) return;
+      const pend = all.filter(RA.isPendingDecision), done = all.filter((d) => !RA.isPendingDecision(d)).sort((a, b) => ((b.decided || "") < (a.decided || "") ? -1 : 1));
+      title = "Decisions"; sub = `${pend.length} pending · ${all.length} logged`;
+      head = hdrRow(["ID", "Decision", "Status", "Decided", "By / forum", "Owner"]); colW = [0.7, 4.7, 1.1, 1.1, 2.0, 1.9];
+      rows = pend.concat(done).slice(0, 9).map((d) => [t(d.id, { bold: true }), t(clip(d.title, 110)), t(d.status), t(dt(d.decided)), t(clip(d.maker, 26)), t(clip(d.owner, 24))]);
+    }
+    if (!rows.length) rows = [[t("–"), t("Nothing open")].concat(colW.slice(2).map(() => t("")))];
+    tableSlide(deck, env, `${base} – ${title}`, sub, [head].concat(rows), colW, { rowH: 0.46, y: 1.3 });
   }
 
   // KPI-specific detail table (shown on its own slide after the KPI slide)
@@ -282,9 +292,8 @@
       else if (p.id === "look") lookSlide(deck, env);
       else if (p.kpi && env.all.byKey[p.kpi] && !env.all.byKey[p.kpi].empty) {
         const res = env.all.byKey[p.kpi];
-        if (res.key === "raid") { kpiSlide(deck, res, env, p); raidSlides(deck, env, res); }
-        else { kpiSlide(deck, res, env, p); detailSlide(deck, res, env, p); }
-      }
+        kpiSlide(deck, res, env, p); detailSlide(deck, res, env, p);
+      } else if (p.raidKind) raidKindSlide(deck, env, p.raidKind);
     });
     return deck;
   }

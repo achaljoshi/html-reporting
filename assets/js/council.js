@@ -103,7 +103,7 @@
     const rows = env.data.lessons.slice().sort((a, b) => ((a.date || "") < (b.date || "") ? 1 : -1));
     const tbl = rows.length ? U.table(["Date", "Category", "Lesson learned", "Improvement action", "Owner", "Status"], rows.map((r) => [r.date ? D.fmt(r.date, false) : "—", esc(r.category), esc(r.lesson), esc(r.action), esc(r.owner), esc(r.status)]), { wrap: true })
       : `<div class="sx-callout info">No lessons recorded yet. Add rows to the <b>Lessons_Learned</b> sheet of your workbook.</div>`;
-    const html = U.slide({ id: env.prefix + "slide-lessons", eyebrow: "Risks, Issues and Lessons Learned (2/2)", title: "Lessons Learned", sub: "Post-transition lessons and improvement actions", left: tbl, single: true, foot: "Source: Lessons_Learned sheet" + (ATS.isSample() ? ' · <b style="color:#b54708">SAMPLE DATA</b>' : "") });
+    const html = U.slide({ id: env.prefix + "slide-lessons", eyebrow: "Risks, Issues & Lessons — Lessons Learned", title: "Lessons Learned", sub: "Post-transition lessons and improvement actions", left: tbl, single: true, foot: "Source: Lessons_Learned sheet" + (ATS.isSample() ? ' · <b style="color:#b54708">SAMPLE DATA</b>' : "") });
     return { html, draw() {} };
   };
 
@@ -183,7 +183,7 @@
       let g = "", rh = "";
       pages.forEach((p) => {
         if (p.group !== g) { g = p.group; rh += `<h6>${esc(g)}</h6>`; }
-        const rg = p.kpi ? env.all.byKey[p.kpi].rag : null;
+        const rg = p.kpi ? env.all.byKey[p.kpi].rag : p.ragOf ? p.ragOf(env) : null;
         rh += `<button data-page="${p.id}" class="${p.id === state.page ? "active" : ""}">${rg ? R.dot(rg) : ""}${esc(p.label)}${p.n ? `<span class="sx-n">${esc(p.n)}</span>` : ""}</button>`;
       });
       rail.innerHTML = rh;

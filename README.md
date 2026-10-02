@@ -5,7 +5,7 @@ An offline, interactive reporting cockpit for the whole ATS programme. **Every p
 | Section | What it is |
 |---|---|
 | **Programme Overview** | All portfolios side by side for a chosen month or week: RAG heat-map (portfolio × KPI), portfolio cards, "compare a KPI" ranking, and combined registers (TSRs, open defects, milestones at risk, high RAID items). Click anything to drill into that portfolio. |
-| **Monthly Council** | The council deck as an interactive pack for the **selected portfolio** — scorecard, RAG history, RAID, monthly + quarterly KPI pages, commercials, resourcing, readiness. ← → keys page through it. |
+| **Monthly Council** | The council deck as an interactive pack for the **selected portfolio** — scorecard, RAG history, a RAID section with a page each for Risks, Issues, Assumptions, Dependencies and Decisions (plus Lessons Learned), monthly + quarterly KPI pages, commercials, resourcing, readiness. ← → keys page through it. |
 | **Weekly Report** | The same portfolio data sliced by week: week-at-a-glance, what changed, burn-up, defects, environment, milestones, RAID, 12-week trends, look-ahead. |
 | **POAP — Plan on a Page** | Interactive roadmap (Gantt, plan-on-a-page, integration flows) for the selected portfolio. |
 
