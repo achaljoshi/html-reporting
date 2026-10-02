@@ -10,8 +10,6 @@
 .side-file.ok{color:#dbe6ff;}
 .sx-dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:6px;vertical-align:middle;}
 
-.sx-sample{display:none;position:fixed;bottom:16px;right:18px;z-index:60;background:#f59e0b;color:#3b2500;font-weight:800;font-size:11px;letter-spacing:.14em;padding:6px 14px;border-radius:20px;box-shadow:0 4px 14px rgba(0,0,0,.25);pointer-events:none;}
-body.is-sample .sx-sample{display:block;}
 
 /* header */
 .sx-head{display:flex;align-items:flex-start;justify-content:space-between;gap:18px;margin-bottom:18px;flex-wrap:wrap;}
