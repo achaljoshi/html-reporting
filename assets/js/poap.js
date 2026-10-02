@@ -432,7 +432,7 @@
     var todayDn = (ctx && ctx.today instanceof Date && !isNaN(ctx.today)) ? dnFromLocalDate(ctx.today) : dnFromLocalDate(new Date());
     var sd = cfg.statusDate ? parseDateCell(cfg.statusDate).dn : null;
     var statusDn = sd != null ? sd : todayDn;
-    var M = { cfg: cfg, todayDn: todayDn, statusDn: statusDn, program: cfg.program || "Plan on a Page" };
+    var M = { cfg: cfg, todayDn: todayDn, statusDn: statusDn, program: String(cfg.program || "Plan on a Page").replace(/\s*[\(\[]\s*sample\s*[\)\]]\s*$/i, "") };
     // pillars / types
     var pillars = (cfg.pillars || []).map(function (p) { return { name: p.name, color: p.color }; });
     var types = (cfg.types || []).map(function (p) { return { name: p.name, color: p.color }; });

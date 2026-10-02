@@ -114,7 +114,7 @@
     const files = (meta.files || []).map((f) => `<span class="chip green">${esc(f.kind.toUpperCase())}</span> ${esc(f.name)} <span class="sx-dim">— ${esc(f.note || "")}</span>`).join("<br>");
     const left = `<div class="sx-stats">${U.stat(d.snapshots.length, "Weekly snapshots")}${U.stat(d.defects.length, "Defects")}${U.stat(d.tsrs.length, "TSRs")}${U.stat(d.milestones.length, "Milestones")}${U.stat(d.readiness.length, "Readiness rows")}</div>
       <div class="sx-panel"><h5>Data checks <span class="tag">${q.length ? q.length + " to review" : "all clear"}</span></h5>${q.length ? `<ul class="sx-quality">${q.map((x) => `<li><b>${esc(x.sheet)}</b> — ${esc(x.msg)}</li>`).join("")}</ul>` : '<p>No problems found in the workbook. Dates, statuses and counts are consistent.</p>'}</div>
-      <div class="sx-panel"><h5>Loaded files</h5><p>${files || "Embedded sample data"}</p><p style="margin-top:8px" class="sx-dim">Loaded ${meta.loadedAt ? new Date(meta.loadedAt).toLocaleString() : "—"} · Source: ${esc(meta.source)}</p></div>`;
+      <div class="sx-panel"><h5>Loaded files</h5><p>${files || "Built-in demo data"}</p><p style="margin-top:8px" class="sx-dim">Loaded ${meta.loadedAt ? new Date(meta.loadedAt).toLocaleString() : "—"} · Source: ${esc(meta.source === "sample" ? "built-in demo" : meta.source)}</p></div>`;
     return { html: U.slide({ id: env.prefix + "slide-checks", eyebrow: "Appendix", title: "Data Quality & Provenance", sub: "Why you can trust the numbers", left, single: true, foot: "Checks run every time data is loaded" }), draw() {} };
   };
 
