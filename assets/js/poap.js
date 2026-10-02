@@ -818,6 +818,9 @@
     var s = "--c:" + hex + ";--bg:" + hexToRgba(hex, 0.17) + ";--bd:" + hexToRgba(hex, 0.6) + ";--fl:" + hexToRgba(hex, 0.5) + ";--dk:" + darken(hex, 0.55) + ";";
     colCache[hex] = s; return s;
   }
+  function tintVars(hex) {
+    return "--t07:" + hexToRgba(hex, 0.07) + ";--t09:" + hexToRgba(hex, 0.09) + ";--t11:" + hexToRgba(hex, 0.11) + ";--t16:" + hexToRgba(hex, 0.16) + ";--t22:" + hexToRgba(hex, 0.22) + ";--t45:" + hexToRgba(hex, 0.45) + ";--t55:" + hexToRgba(hex, 0.55) + ";";
+  }
   function segmented(items, active, onPick, label) {
     var wrap = h("div", { class: "toggle-pill poap-seg", role: "group", "aria-label": label || "Options" });
     items.forEach(function (it) {
@@ -1046,7 +1049,7 @@
     if (!RM.hl) return;
     if (!box) { RM.hl.style.display = "none"; RM.hlKey = null; return; }
     var k = box.top + ":" + box.h; if (RM.hlKey === k) return; RM.hlKey = k;
-    RM.hl.style.cssText = "display:block;top:" + box.top + "px;height:" + box.h + "px;--hc:" + (box.color || "#0ea5a0") + ";";
+    RM.hl.style.cssText = "display:block;top:" + box.top + "px;height:" + box.h + "px;--hc:" + (box.color || "#0ea5a0") + ";" + tintVars(box.color || "#0ea5a0");
     RM.hl.className = "poap-hl" + (box.group ? " is-group" : "");
   }
   function rmHover(ev) {
@@ -1439,7 +1442,7 @@
           var lk = "rl:" + ln.key + ":" + rw.row; used.labels[lk] = 1;
           if (!R.labels[lk]) {
             var le = document.createElement("div");
-            le.className = "poap-rl poap-rl-" + rw.kind; le.style.cssText = "top:" + ry + "px;height:" + RM.rowH + "px;" + (rw.kind === "act" ? "--tc:" + rw.color + ";" : colVars(rw.b.color));
+            le.className = "poap-rl poap-rl-" + rw.kind; le.style.cssText = "top:" + ry + "px;height:" + RM.rowH + "px;" + (rw.kind === "act" ? "--tc:" + rw.color + ";" + tintVars(rw.color) : colVars(rw.b.color));
             if (rw.kind === "act") {
               le.setAttribute("data-act", ln.key + ":" + rw.row);
               le.innerHTML = '<i class="poap-rl-dot"></i><span class="poap-rl-name">' + esc(rw.type) + '</span><span class="poap-rl-meta">' + rw.n + " · " + Math.round(rw.pct * 100) + "%</span>";
@@ -1454,7 +1457,7 @@
           var gk = "rg:" + ln.key + ":" + rw.row; used.rows[gk] = 1;
           if (!R.rows[gk]) {
             var ge2 = document.createElement("div"); ge2.className = "poap-rg poap-rg-" + rw.kind;
-            ge2.style.cssText = "top:" + ry + "px;height:" + RM.rowH + "px;--tc:" + (rw.kind === "act" ? rw.color : "transparent") + ";";
+            ge2.style.cssText = "top:" + ry + "px;height:" + RM.rowH + "px;" + (rw.kind === "act" ? "--tc:" + rw.color + ";" + tintVars(rw.color) : "");
             R.rows[gk] = ge2; fragR.appendChild(ge2);
           }
           if (rw.kind === "act") {
@@ -1462,7 +1465,7 @@
             if (!R.items[ak]) {
               var ae = document.createElement("div"); ae.className = "poap-bsum poap-asum";
               ae.setAttribute("data-tip", rw.type + " · " + plural(rw.n, "item") + " · " + Math.round(rw.pct * 100) + "% complete · " + fmtD(rw.smin, true) + " – " + fmtD(rw.smax));
-              ae.style.cssText = "left:" + ((rw.smin - minDn) * pxd) + "px;top:" + (ry + RM.rowH / 2 - 3) + "px;width:" + Math.max((rw.smax - rw.smin + 1) * pxd, 6) + "px;--pc:" + rw.color + ";";
+              ae.style.cssText = "left:" + ((rw.smin - minDn) * pxd) + "px;top:" + (ry + RM.rowH / 2 - 3) + "px;width:" + Math.max((rw.smax - rw.smin + 1) * pxd, 6) + "px;--pc:" + rw.color + ";" + tintVars(rw.color);
               ae.innerHTML = '<i style="width:' + Math.round(rw.pct * 100) + '%"></i>';
               R.items[ak] = ae; fragI.appendChild(ae);
             }
@@ -1629,6 +1632,20 @@
     S.pxd = pxd; S.zoom = "fit";
     rmLayoutAll(); sc.scrollLeft = 0; rmUpdateWin();
   }
+  // PDF export: draw the whole roadmap (not just the scrolled window), fitted to the page width
+  ATSpoap.prepareExport = function () {
+    if (!S.model || S.view !== "roadmap" || !RM.ready) return null;
+    var saved = { zoom: S.zoom, pxd: S.pxd, sl: RM.sc.scrollLeft, st: RM.sc.scrollTop };
+    RM.sc.style.height = "auto"; RM.sc.style.overflow = "visible";
+    RM.printing = true; rmHl(null); rmFit();
+    return {
+      restore: function () {
+        RM.sc.style.height = ""; RM.sc.style.overflow = ""; RM.printing = false;
+        S.zoom = saved.zoom; S.pxd = saved.pxd; rmLayoutAll();
+        RM.sc.scrollLeft = saved.sl; RM.sc.scrollTop = saved.st; rmUpdateWin(); RM.zoomSeg.setActive(S.zoom); cls(RM.btnFit, "is-on", S.zoom === "fit");
+      }
+    };
+  };
   function rmToday(smooth) {
     var sc = RM.sc, M = S.model;
     var x = (M.todayDn - M.minDn) * S.pxd;
