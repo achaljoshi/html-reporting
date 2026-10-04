@@ -117,6 +117,11 @@
     var k = String(s).toLowerCase().slice(0, 3);
     return MON.map(function (m) { return m.toLowerCase(); }).indexOf(k);
   }
+  // a real calendar date or nothing (never roll "2026-25-09" or "31/02/2026" over into a different date)
+  function ymdCell(y, m, d) {
+    if (m < 1 || m > 12 || d < 1 || d > new Date(Date.UTC(y, m, 0)).getUTCDate()) return { dn: null, tbc: false };
+    return { dn: dnFromYMD(y, m, d), tbc: false };
+  }
   /** returns { dn: number|null, tbc: boolean } */
   function parseDateCell(v) {
     if (v == null || v === "") return { dn: null, tbc: false };
@@ -133,19 +138,19 @@
     var s = String(v).trim();
     if (!s) return { dn: null, tbc: false };
     var m;
-    if ((m = /(\d{4})-(\d{1,2})-(\d{1,2})/.exec(s))) return { dn: dnFromYMD(+m[1], +m[2], +m[3]), tbc: false };
+    if ((m = /(\d{4})-(\d{1,2})-(\d{1,2})/.exec(s))) return ymdCell(+m[1], +m[2], +m[3]);
     if ((m = /(\d{1,2})[\/.\-](\d{1,2})[\/.\-](\d{2,4})/.exec(s))) {
       var dd = +m[1], mm = +m[2], yy = +m[3];
       if (yy < 100) yy += 2000;
       if (mm > 12 && dd <= 12) { var t = dd; dd = mm; mm = t; }
-      if (mm >= 1 && mm <= 12 && dd >= 1 && dd <= 31) return { dn: dnFromYMD(yy, mm, dd), tbc: false };
+      return ymdCell(yy, mm, dd);
     }
-    if ((m = /(\d{1,2})(?:st|nd|rd|th)?\s+([A-Za-z]{3,9})\.?,?\s+(\d{2,4})/.exec(s)) && monthIdx(m[2]) >= 0) {
+    if ((m = /(\d{1,2})(?:st|nd|rd|th)?[\s\-]+([A-Za-z]{3,9})\.?,?[\s\-]+(\d{2,4})/.exec(s)) && monthIdx(m[2]) >= 0) {
       var y3 = +m[3]; if (y3 < 100) y3 += 2000;
-      return { dn: dnFromYMD(y3, monthIdx(m[2]) + 1, +m[1]), tbc: false };
+      return ymdCell(y3, monthIdx(m[2]) + 1, +m[1]);
     }
     if ((m = /([A-Za-z]{3,9})\.?\s+(\d{1,2})(?:st|nd|rd|th)?,?\s+(\d{4})/.exec(s)) && monthIdx(m[1]) >= 0) {
-      return { dn: dnFromYMD(+m[3], monthIdx(m[1]) + 1, +m[2]), tbc: false };
+      return ymdCell(+m[3], monthIdx(m[1]) + 1, +m[2]);
     }
     if (/^\d{5}(\.\d+)?$/.test(s)) return { dn: Math.floor(+s) - 25569, tbc: false };
     if (TBC_RE.test(s)) return { dn: null, tbc: true };
