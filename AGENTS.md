@@ -55,7 +55,7 @@ Node 22+ is required.
 5. Thresholds in `qa-thresholds.json` are met (0 page errors, 0 sweep findings, >= 40 unit tests, e2e < 5 min).
 
 ## PROTECTED paths — never edit (human-owned)
-`qa-thresholds.json` · `tests/quarantine.txt` · `.github/` · `pipelines/` · `azure-pipelines*` · `templates/*.xlsx` · `samples/**` · `assets/lib/**` · `assets/js/pptx-template.js` · `local_private/` · `ATS_Program/`
+`qa-thresholds.json` · `tests/quarantine.txt` · `.github/` · `pipelines/` · `azure-pipelines*` · `templates/*.xlsx` · `samples/**` · `assets/lib/**` · `assets/js/pptx-template.js` · `local_private/` · `ATS_Program/` · `AGENTS.md` · `.agent/` · `package.json` · `package-lock.json`
 
 If a task seems to require changing one of these, stop and report it instead.
 

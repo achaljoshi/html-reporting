@@ -18,11 +18,26 @@
     "assets/lib/**",
     "assets/js/pptx-template.js",
     "local_private/",
-    "ATS_Program/"
+    "ATS_Program/",
+    "AGENTS.md"
   ],
   "qa_write_dir": "tests/ai-generated/",
-  "allowed_cmds": ["npm", "node", "npx playwright", "git status", "git diff"],
-  "diff_budget": { "files": 15, "lines": 600 },
+  "allowed_cmds": [
+    "npm run",
+    "npm test",
+    "node --test",
+    "npx playwright test",
+    "git status",
+    "git diff"
+  ],
+  "diff_budget": {
+    "files": 15,
+    "lines": 600
+  },
   "agent_instructions": "AGENTS.md",
-  "definition_of_done": ["npm run build", "npm test", "npm run test:e2e"]
+  "definition_of_done": [
+    "npm run build",
+    "npm test",
+    "npm run test:e2e"
+  ]
 }
