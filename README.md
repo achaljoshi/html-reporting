@@ -168,6 +168,14 @@ Everything committed to this repository is **fictional sample data** and blank t
 ## 11. Working with AI agents
 This repo is set up so AI agents (a Development agent and a QA agent) can build, test and fix it autonomously. The rules they follow — architecture, conventions, protected paths, confidentiality, definition of done, how to write tests — are in **[`AGENTS.md`](AGENTS.md)**; the machine-readable adapter is `.agent/project.json`. Humans can use the same scripts (Node 22+; the app itself still needs nothing but a browser):
 
+To let the agents do a task end to end on your machine, use the loop in [azure-ai-automation](https://github.com/achaljoshi/azure-ai-automation) (branch `feature/working-implementation`):
+
+```bash
+LLM_PROVIDER=anthropic ANTHROPIC_API_KEY=... python <azure-ai-automation>/agents/local_loop.py --repo . --task "Bug: ... steps, expected, actual ..."
+```
+
+It works in a separate git worktree on an `ai/<id>-<slug>` branch, re-runs `npm run build`, `npm test` and `npm run test:e2e` itself, and leaves a report; you review and merge.
+
 | Script | Purpose |
 |---|---|
 | `npm ci` | install (`@playwright/test` only) |
