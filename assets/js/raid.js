@@ -103,7 +103,7 @@
   RA.isOpenIssue = (i) => !i.archived && !/^(resolved|closed)/.test(lc(i.status));
   RA.isOpenDep = (d) => !d.archived && lc(d.status) !== "closed";
   // one definition of an assumption's state, shared by the overview counts and the Assumptions page
-  RA.assumptionState = (a) => { const k = lc(a.status); return /incorrect/.test(k) ? "Confirmed Incorrect" : /^(closed|withdrawn|superseded|invalid|no longer)/.test(k) ? "Closed" : /correct|confirmed|validated/.test(k) ? "Confirmed Correct" : "Unconfirmed"; };
+  RA.assumptionState = (a) => { const k = lc(a.status); return /incorrect/.test(k) ? "Confirmed Incorrect" : /^(closed|withdrawn|superseded|invalid|no longer)/.test(k) ? "Closed" : /^(un(confirmed|validated|verified)|not\b|tbc|to be)/.test(k) ? "Unconfirmed" : /correct|confirmed|validated/.test(k) ? "Confirmed Correct" : "Unconfirmed"; };
   RA.isPendingDecision = (d) => !d.archived && /^(pending|proposed|draft|open|awaiting|tbc)/.test(lc(d.status));
 
   // data checks for the Data Quality page
