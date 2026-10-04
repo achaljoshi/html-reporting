@@ -11,3 +11,7 @@ tools/build_kpi_templates.py
 tools/build_poap_templates.py
 tools/decode_poap_gantt.py
 tools/build_sample_portfolios.py
+node_modules/
+playwright-report/
+test-results/
+junit-qa.xml
