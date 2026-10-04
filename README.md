@@ -164,3 +164,15 @@ Everything committed to this repository is **fictional sample data** and blank t
 * Regression sweep: with the dashboard open, run `fetch("tools/qa_harness.js").then(r => r.text()).then(eval)` in the browser console, then `await QA.sweepAll()` — it opens every page for every portfolio and reports errors, broken text, overflow and empty charts.
 * The PowerPoint export sits on the client template. To change the look, rebuild the embedded theme from the new deck: `python3 tools/build_pptx_template.py "/path/to/Template.pptx"` (keeps masters, layouts, theme and logos; drops every slide, chart, note and personal metadata).
 * Workbook layouts are specified in `tools/SCHEMA_KPI_WORKBOOK.md` and `tools/SCHEMA_POAP_WORKBOOK.md`.
+
+## 11. Working with AI agents
+This repo is set up so AI agents (a Development agent and a QA agent) can build, test and fix it autonomously. The rules they follow — architecture, conventions, protected paths, confidentiality, definition of done, how to write tests — are in **[`AGENTS.md`](AGENTS.md)**; the machine-readable adapter is `.agent/project.json`. Humans can use the same scripts (Node 22+; the app itself still needs nothing but a browser):
+
+| Script | Purpose |
+|---|---|
+| `npm ci` | install (`@playwright/test` only) |
+| `npm run build` | syntax-check every file in `assets/js` and `tools` |
+| `npm test` | fast unit tests (`node:test`, no browser) |
+| `npm run test:e2e` | Playwright smoke tests in Chromium (starts its own server) |
+| `npm run serve` | static server on http://localhost:8765 (`PORT` overrides) |
+| `npm run qa` | build + test + test:e2e (also run by GitHub Actions on every push / PR) |

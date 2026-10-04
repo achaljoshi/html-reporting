@@ -1,0 +1,28 @@
+{
+  "name": "html-reporting",
+  "description": "ATS Executive Dashboard: an offline, no-server HTML reporting app (plain browser JS, global window.ATS namespace, no build step) that turns weekly Excel workbooks into Programme Overview, Monthly Council, Weekly Report and POAP views with PDF and PowerPoint export.",
+  "install": "npm ci",
+  "build": "npm run build",
+  "unit_test": "npm test",
+  "e2e_test": "npm run test:e2e",
+  "serve": "npm run serve",
+  "base_url": "http://localhost:8765",
+  "protected_paths": [
+    "qa-thresholds.json",
+    "tests/quarantine.txt",
+    ".github/",
+    "pipelines/",
+    "azure-pipelines*",
+    "templates/*.xlsx",
+    "samples/**",
+    "assets/lib/**",
+    "assets/js/pptx-template.js",
+    "local_private/",
+    "ATS_Program/"
+  ],
+  "qa_write_dir": "tests/ai-generated/",
+  "allowed_cmds": ["npm", "node", "npx playwright", "git status", "git diff"],
+  "diff_budget": { "files": 15, "lines": 600 },
+  "agent_instructions": "AGENTS.md",
+  "definition_of_done": ["npm run build", "npm test", "npm run test:e2e"]
+}
