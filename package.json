@@ -8,7 +8,8 @@
     "test": "node --test \"tests/unit/*.test.js\"",
     "test:e2e": "playwright test",
     "serve": "node tools/serve.js",
-    "qa": "npm run build && npm test && npm run test:e2e"
+    "qa": "npm run build && npm test && npm run test:e2e",
+    "pages": "node tools/build_pages.js public"
   },
   "devDependencies": {
     "@playwright/test": "~1.60.0"
