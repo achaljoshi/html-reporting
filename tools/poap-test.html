@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>POAP module — test harness</title>
+<link rel="stylesheet" href="../assets/css/style.css">
+<link rel="stylesheet" href="../assets/css/poap.css">
+<style>
+  body{background:var(--bg);}
+  #harness-bar{display:flex;gap:10px;align-items:center;padding:10px 28px;background:#fff;border-bottom:1px solid var(--line);position:sticky;top:0;z-index:20;font-size:12.5px;}
+  #harness-bar button{font-size:12px;}
+  #harness-wrap{display:flex;min-height:calc(100vh - 50px);}
+  #harness-side{width:var(--sidebar-w);flex:0 0 var(--sidebar-w);background:linear-gradient(180deg,var(--navy),var(--navy-2));}
+  #harness-main{flex:1;min-width:0;padding:24px 28px 60px;}
+  #harness-msg{margin-left:auto;color:var(--sub);}
+</style>
+</head>
+<body>
+<div id="harness-bar">
+  <b>POAP test harness</b>
+  <button class="btn btn-outline btn-sm" id="b-sample">SAMPLE workbook</button>
+  <button class="btn btn-outline btn-sm" id="b-blank">Blank template</button>
+  <button class="btn btn-outline btn-sm" id="b-messy">Messy variant</button>
+  <button class="btn btn-outline btn-sm" id="b-none">No workbook (null)</button>
+  <span id="harness-msg"></span>
+</div>
+<div id="harness-wrap">
+  <div id="harness-side"></div>
+  <div id="harness-main"><div id="poap-root"></div></div>
+</div>
+<script>
+// Headless/hidden browser panes pause requestAnimationFrame; fall back to timers so the harness stays testable.
+(function () {
+  var raf = window.requestAnimationFrame.bind(window);
+  window.requestAnimationFrame = function (cb) {
+    var done = false;
+    var id = raf(function (t) { if (!done) { done = true; cb(t); } });
+    setTimeout(function () { if (!done) { done = true; cb(performance.now()); } }, 40);
+    return id;
+  };
+})();
+</script>
+<script src="../assets/lib/xlsx.full.min.js"></script>
+<script src="../assets/lib/chart.umd.min.js"></script>
+<script src="../assets/js/poap.js"></script>
+<script>
+(function () {
+  var msg = document.getElementById("harness-msg");
+  function say(t) { msg.textContent = t; }
+  var cache = {};
+  function load(url) {
+    if (cache[url]) return Promise.resolve(cache[url]);
+    return fetch(url, { cache: "no-store" }).then(function (r) { if (!r.ok) throw new Error(url + " " + r.status); return r.arrayBuffer(); })
+      .then(function (buf) { var wb = XLSX.read(new Uint8Array(buf), { type: "array", cellDates: true }); cache[url] = wb; return wb; });
+  }
+  function show(wb, sample, label) {
+    var data = ATS.poap.parse(wb);
+    window.__data = data;
+    window.__wb = wb;
+    say(label + (data ? " — plan " + data.plan.length + ", milestones " + data.milestones.length + ", p2p " + data.p2p.length : " — parse returned null"));
+    ATS.poap.render(data, { today: new Date(2026, 9, 2), sampleMode: !!sample });
+  }
+  ATS.poap.mount(document.getElementById("poap-root"));
+  window.__loadSample = function () { return load("../samples/ATS_Program_SAMPLE/Self Assessment/ATS_POAP.xlsx").then(function (wb) { show(wb, true, "SAMPLE"); return wb; }); };
+  window.__loadBlank = function () { return load("../templates/ATS_POAP_Template.xlsx").then(function (wb) { show(wb, false, "Blank template"); return wb; }); };
+  window.__load = load; window.__show = show;
+  document.getElementById("b-sample").onclick = window.__loadSample;
+  document.getElementById("b-blank").onclick = window.__loadBlank;
+  document.getElementById("b-none").onclick = function () { ATS.poap.render(null, {}); say("render(null)"); };
+  document.getElementById("b-messy").onclick = function () { show(window.__makeMessy(), false, "Messy variant"); };
+  // A deliberately messy workbook: reordered columns, text dates, serials, odd casing, extra columns, blank rows.
+  window.__makeMessy = function () {
+    var wb = XLSX.utils.book_new();
+    var plan = [
+      ["Messy POAP"], ["purpose"], ["how"], [],
+      ["Notes", "RAG", "extra col", "END", "start ", "Item", "Activity Type", "Topic", "Pillar", "Status", "% complete", "Depends On", "ID", "Baseline End", "Owner"],
+      ["", "red", "x", "30/11/2026", "01/10/2026", "SIT cycle A", "SIT", "Alpha", "Pillar 1", "in progress", 60, "M-2; M-3", "M-1", "16/11/2026", "Me"],
+      ["", "Amber", "", "2026-12-18", "2026-11-23", "Retest", "Defect Retest", "Alpha", "Pillar 1", "", 0.25, "M-1", "M-2", "2026-12-04", ""],
+      ["", "", "", 46380, 46350, "Excel serial dates", "Regression", "Beta", "Pillar 2", "Complete", "100%", "", "M-3", "", ""],
+      ["", "", "", "Dates TBC", "TBC", "NFR to be planned", "NFR", "Beta", "Pillar 2", "", "", "M-9, ,", "M-4", "", ""],
+      ["EXAMPLE – delete this row", "", "", "2026-01-02", "2026-01-01", "skip me", "SIT", "Alpha", "Pillar 1", "", "", "", "M-5", "", ""],
+      [], ["", "", "", new Date(2026, 11, 24), new Date(2026, 11, 14), "JS Date cells", "E2E", "Beta", "Pillar 2", "Not Started", 0, "", "", "", ""]
+    ];
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(plan), "POAP_Plan");
+    var ms = [["Milestones"], [], [], [], ["Date", "Milestone", "Type", "Pillar", "Status", "ID"], ["15 Dec 2026", "Penalties end", "Gate", "", "Planned", "MS-1"]];
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(ms), "POAP_Milestones");
+    var p2p = [["P2P"], [], [], [], ["Status", "Flow ID", "Topic", "System Path", "5xx (server error)", "2xx (success)"], ["Not Started", "F1", "T", "A -> B > C → D", "Fail", "Pass"]];
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(p2p), "P2P_Matrix");
+    return wb;
+  };
+  window.__loadSample().catch(function (e) { say("Load failed: " + e.message); });
+})();
+</script>
+</body>
+</html>

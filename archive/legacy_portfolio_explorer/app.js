@@ -240,7 +240,7 @@
   }
 
   function alertBanner(msg) {
-    const status = $("#data-status");
+    const status = $("#legacy-data-status");
     status.innerHTML = `<b>${msg}</b>`;
   }
 
@@ -278,7 +278,7 @@
   function updateDataStatus(savedAt) {
     const portfolios = state.selectedMonth ? Object.keys(state.dataByMonth[state.selectedMonth] || {}) : [];
     const when = savedAt ? new Date(savedAt).toLocaleString() : "";
-    $("#data-status").innerHTML = `<b>${portfolios.length}</b> portfolios · <b>${state.months.length}</b> month(s) loaded${when ? `<br>Last loaded: ${when}` : ""}`;
+    $("#legacy-data-status").innerHTML = `<b>${portfolios.length}</b> portfolios · <b>${state.months.length}</b> month(s) loaded${when ? `<br>Last loaded: ${when}` : ""}`;
   }
 
   // ---------------------------------------------------------------
@@ -1163,7 +1163,7 @@
   // Wiring
   // ---------------------------------------------------------------
   function wire() {
-    $all(".nav-item").forEach(btn => btn.addEventListener("click", () => switchView(btn.getAttribute("data-view"))));
+    $all(".nav-item[data-legacy]").forEach(btn => btn.addEventListener("click", () => { if (window.ATS && ATS.shell) ATS.shell.go(btn.getAttribute("data-view")); else switchView(btn.getAttribute("data-view")); }));
 
     $("#folder-input").addEventListener("change", (e) => {
       if (!e.target.files.length) return;
@@ -1203,4 +1203,5 @@
   }
 
   document.addEventListener("DOMContentLoaded", init);
+  window.ATSLegacy = { show: switchView, hasData: () => !!state.selectedMonth, rerender: renderCurrentView };
 })();

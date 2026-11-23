@@ -1,162 +1,201 @@
 # ATS Program — Executive Dashboard
 
-A fully offline, interactive dashboard for presenting the ATS program's monthly
-portfolio data (KPIs + TSR/SLA performance) to clients. It runs entirely on
-your machine — **no server, no internet connection, no upload of any kind.**
-Everything is read live from Excel files you keep in a local folder.
+An offline, interactive reporting cockpit for the whole ATS programme. **Every portfolio fills the same weekly Excel workbook → you get each portfolio's Weekly Report, Monthly Council pack and POAP roadmap, plus a Programme Overview comparing all portfolios, plus ready-made PowerPoint.** No server, no internet, no screenshots, nothing uploaded anywhere.
+
+| Section | What it is |
+|---|---|
+| **Programme Overview** | All portfolios side by side for a chosen month or week: RAG heat-map (portfolio × KPI), portfolio cards, "compare a KPI" ranking, and combined registers (TSRs, open defects, milestones at risk, high RAID items). Click anything to drill into that portfolio. |
+| **Monthly Council** | The council deck as an interactive pack for the **selected portfolio** — scorecard, RAG history, a RAID section with a page each for Risks, Issues, Assumptions, Dependencies and Decisions (plus Lessons Learned), monthly + quarterly KPI pages, commercials, resourcing, readiness. ← → keys page through it. |
+| **Weekly Report** | The same portfolio data sliced by week: week-at-a-glance, what changed, burn-up, defects, environment, milestones, RAID, 12-week trends, look-ahead. |
+| **POAP — Plan on a Page** | Interactive roadmap (Gantt, plan-on-a-page, integration flows) for the selected portfolio. |
+
+The **Portfolio** dropdown (top bar) switches Monthly Council / Weekly Report / POAP between portfolios. The Programme Overview shows all of them at once.
 
 ---
 
-## 1. What's in this folder
+## Start here
+| I want to… | Go to |
+|---|---|
+| **Learn how to fill the data** (step by step, every column explained) | [`docs/HOW_TO_FILL_DATA.md`](docs/HOW_TO_FILL_DATA.md) — a Word copy to circulate to portfolio teams is in [`docs/ATS_Data_Filling_Guide.docx`](docs/ATS_Data_Filling_Guide.docx) |
+| **See a finished, filled example** | `samples/ATS_Program_SAMPLE/Self Assessment/` (weekly workbook + POAP + RAID log — all fictional) and four more portfolios beside it |
+| **Start my own portfolio** | copy `templates/ATS_Weekly_Data_Template.xlsx` (and `ATS_POAP_Template.xlsx`, `ATS_RAID_Log_Template.xlsx`) — each has a built-in guide and the weekly one has an example row on every sheet |
+| **Present** | open `index.html` |
 
+## 1. Open it
+Double-click **`index.html`** (Chrome or Edge). It opens with **sample data** — five fictional portfolios — and an amber *SAMPLE DATA* tag (bottom-right).
+
+## 2. One design for every portfolio
+
+**Each portfolio keeps its own copy of the same workbook** and fills it weekly. Nothing is merged by hand — the dashboard reads them all.
+
+```
+ATS_Program/                          ← the folder you load in the dashboard
+├── Self Assessment/
+│   └── ATS_Weekly_Data.xlsx          ← that portfolio's weekly workbook (copy of the template)
+├── PAYE/
+│   └── ATS_Weekly_Data.xlsx
+├── Customs Declaration Service/
+│   ├── ATS_Weekly_Data.xlsx
+│   ├── ATS_POAP.xlsx                 ← optional: that portfolio's plan
+│   └── ATS_RAID_Log.xlsx             ← optional: that portfolio's RAID log (Risks, Issues, Assumptions, Dependencies, Decisions)
+└── …one subfolder per portfolio
+```
+* **A portfolio = one weekly workbook.** Its name comes from **Config → Portfolio Name** (set it once; it must be unique).
+* POAP and RAID are optional per portfolio. A portfolio without them simply shows "no POAP / RAID" on those pages.
+* Prefer a flat folder? Name files `ATS_Weekly_Data - <Portfolio Name>.xlsx`; a POAP/RAID is matched to its portfolio by the portfolio name appearing in the file name (or inside the file).
+* Blank templates left in the folder are ignored whenever real data exists.
+
+### Weekly routine for each portfolio (≈5 minutes)
+1. **Once:** copy `templates/ATS_Weekly_Data_Template.xlsx` into the portfolio's folder as `ATS_Weekly_Data.xlsx`; fill **Config** (Portfolio Name, budget, dates, thresholds); delete the grey *EXAMPLE* rows.
+2. **Every Friday** add: one row in `Weekly_Snapshot`; one row per topic in `Topic_Progress`; add/update `Defect_Log`, `TSR_Log`, `Milestones` as things happen; `Readiness` (optional); `Commentary` (optional — your own wording).
+3. **You (programme lead):** collect the folders into `ATS_Program/`, open the dashboard, click **Load program folder** (first time) or **Refresh data** (afterwards — Chrome/Edge remember the folder; click *Allow* once per session).
+4. Use **Programme Overview** for the all-portfolio picture, or pick a portfolio and open **Weekly Report** / **Monthly Council** / **POAP**.
+5. **Export PowerPoint** (Programme Overview, Monthly Council, Weekly Report) — built on the client PowerPoint theme, with editable charts and tables — or **Export PDF** (top bar) for the whole pack, or **Copy as picture** on any page. To print, open the PDF and print that.
+
+> **History matters:** every row is dated, so any week or month can be reopened later, trends build themselves, and week-over-week / month-over-month deltas are automatic.
+
+### How a month is built from weeks
+* **Flow measures are summed over the period:** planned test days, downtime hours.
+* **Snapshot measures take the latest week in the period:** coverage, automation, test execution, resources, spend, forecast.
+* **Event logs are filtered by date:** defects, TSRs, milestones (working days + UK bank holidays).
+* Weeks belong to the month in which they **end**. Quarterly KPIs (leakage, CSAT, automation) show quarter-to-date.
+* Everything is calculated **as of the end of the chosen week/month**, so last month's pack never changes when you add new data.
+
+## 3. The workbook at a glance (`ATS_Weekly_Data.xlsx`)
+
+| Sheet | Rows | Cadence | Feeds |
+|---|---|---|---|
+| Config | settings | once | portfolio name, thresholds, budget |
+| Weekly_Snapshot | 1 / week | weekly | environment, coverage, automation, CSAT, resources, spend, overall RAG |
+| Topic_Progress | 1 / topic / week | weekly | execution, burn-up, scope mix |
+| Defect_Log | 1 / defect | as it happens | detection, rejection, aging/turnaround, leakage |
+| TSR_Log | 1 / TSR | as it happens | TSR impact (working-day SLA) |
+| Milestones | 1 / milestone | as it happens | milestone delivery |
+| Readiness | 1 / topic / week | weekly | SIT readiness |
+| Commentary | optional | weekly | your own highlights / concerns / actions |
+| Resourcing, Demand_Forecast, Lessons_Learned | small tables | monthly | resourcing, demand pipeline, lessons |
+| Bank_Holidays, Lists | reference | yearly | working-day maths, dropdowns |
+
+Yellow = you type. Grey = formulas, don't type over. Rows whose **Notes** start with `EXAMPLE` are ignored. The workbook's **Guide** sheet explains every column.
+
+### KPI rules (editable in `Config`)
+| KPI | Rule |
+|---|---|
+| Risk Based Coverage | covered ÷ requirements per risk level; Green ≥ target, Amber within 2 pts, else Red; overall = worst of High & Medium |
+| Production Defect Leakage (Q) | Red: P1 ≥ 1, P2 ≥ 5 or P3 ≥ 6; Amber: any P2/P3; *Not in Production* until go-live |
+| Defect Detection Effectiveness | found in testing ÷ (testing + production); rejection % Green ≤ 5%, Amber ≤ 10% |
+| Defect Aging | working-day buckets; SLA 5 days; Green ≥ 80%, Amber ≥ 60% *(assumption)* |
+| Automation Coverage (Q) | Green if ≥ target or improving |
+| Milestone Delivery | any Red milestone → Red; Amber if > 20% amber |
+| Environment Availability | monthly downtime ≤ 24h Green, ≤ 48h Amber; weekly limits in Config *(assumption)* |
+| TSR Impact | Red if any TSR > 10 working days (hold days excluded) |
+| CSAT (Q) | pass mark 3; Green if ≥ pass and not declining |
+| Resource / Demand / Commercial | plan-vs-actual, FTE gap, forecast-vs-budget *(assumptions)* |
+| RAID Health | Red if a Very High item is open; Amber if High |
+| Test Execution | blocked ÷ planned: Green ≤ 5%, Amber ≤ 20% *(assumption)* |
+
+**RAG overrides:** an overall RAG typed in `Weekly_Snapshot` and any `RAG Override` in `Commentary` win over the computed colour — the pack shows both ("Declared Amber · computed Red").
+
+## 4. Programme Overview
+Pick **Monthly** or **Weekly** and a period; every portfolio is recalculated as of that date from its own workbook.
+* **Heat-map** — rows = portfolios (worst first), columns = KPIs; click a dot to open that KPI page for that portfolio.
+* **Portfolio cards** — overall RAG, Green/Amber/Red split, executed %, open defects, availability and the top concerns.
+* **Compare a KPI** — rank all portfolios on one KPI (coloured by RAG); click a bar to drill in.
+* **Registers** — TSRs, open defects, milestones at risk and High RAID items across all portfolios, filterable.
+* The top strip totals open defects, TSRs over SLA, overdue milestones, spend vs budget and high RAID items for the whole programme.
+
+## 5. POAP — Plan on a Page
+Fill `ATS_POAP.xlsx` (copy of `templates/ATS_POAP_Template.xlsx`) once per portfolio and update dates/status as the plan moves.
+
+| Sheet | One row per | Key columns |
+|---|---|---|
+| `POAP_Plan` | roadmap bar | Pillar · Topic (swim-lane) · Activity Type · Item · Start · End · **Baseline Start/End** · % Complete · Status · RAG · Owner · Depends On |
+| `POAP_Milestones` | milestone | Pillar · Topic · Milestone · Date · Type · Status |
+| `P2P_Matrix` | integration flow | Topic · System Path (`Portal → API Gateway → Ledger`) · Test No · Planned date · 2xx / 3xx / 4xx / 5xx results |
+| `POAP_Config` | – | name, plan window, **Status Date** (blank = today), colours |
+
+Three views, all filterable: **Roadmap** (swim-lanes, % fill, RAG, baseline ghost bar + slip badge, milestones, today line, minimap, zoom, dependency arrows, detail drawer), **Plan on a Page** (one-screen poster of phase chevrons per topic, next-30-days and at-risk panels) and **Integration Flows** (system chips; click a system to see every flow touching it). The POAP also feeds the Weekly Report look-ahead.
+
+> The sample POAP (Self Assessment) is fictional. Two bars carry an illustrative baseline slip ("SAMPLE slip for demo") and a couple are `Dates TBC` — they show what those states look like; clear or replace them in your own file.
+
+## 6. Accuracy features
+* TSR days, defect aging and milestone delays use **working days with UK bank holidays**.
+* **Data Quality page** (Appendix of Monthly/Weekly) flags closed defects without a resolved date, returned-before-received TSRs, non-Friday week endings, a stale weekly row, etc.
+* Auto-drafted commentary is labelled **Auto-drafted**; your own `Commentary` text is labelled **From Excel**.
+* A RAID log's own summary (open risks by rating band, open dependencies) is reproduced exactly.
+
+## 7. Folder layout of this project
 ```
 ATS_Dashboard/
-├── index.html                        ← double-click this to open the dashboard
-├── assets/                           ← app code + bundled libraries (offline, no CDN)
-├── templates/
-│   └── ATS_Portfolio_Template.xlsx   ← blank template — circulate this to portfolio leads
-└── ATS_Data/                         ← put completed monthly Excel files here
-    ├── 2026-08/                      ← one sample month, pre-filled with demo data
-    │   ├── Self Assessment.xlsx
-    │   ├── PAYE.xlsx
-    │   └── ... (16 portfolios)
-    └── 2026-09/                      ← a second sample month, so you can see
-        └── ...                         month-over-month comparison working out of the box
+├── index.html                      ← open this
+├── docs/                           ← HOW_TO_FILL_DATA.md + ATS_Data_Filling_Guide.docx
+├── templates/                      ← blank templates to copy for each portfolio team
+│   ├── ATS_Weekly_Data_Template.xlsx
+│   ├── ATS_POAP_Template.xlsx
+│   └── ATS_RAID_Log_Template.xlsx   ← Risks / Issues / Assumptions / Dependencies / Decisions
+├── samples/ATS_Program_SAMPLE/     ← five fictional portfolios used as the built-in demo
+│   └── Self Assessment/            ←   (also has a sample POAP + RAID log)
+├── ATS_Program/                    ← put YOUR portfolio folders here (see section 2; git-ignored)
+├── assets/                         ← code + bundled libraries (SheetJS, Chart.js, PptxGenJS, html2canvas, jsPDF) + `pptx-template.js` (the client PowerPoint theme) — all offline
+├── tools/                          ← schema docs, sample builder, guide builder, QA server
+├── presentation/                   ← the intro deck
+└── archive/legacy_portfolio_explorer/   ← the first multi-portfolio explorer (superseded)
 ```
 
-The `ATS_Data` folder already contains two months of **realistic sample data**
-for all 16 portfolios so you can try the dashboard immediately, before your
-team has filled in a single real file. Once real data starts coming in,
-either overwrite these sample files or delete the `ATS_Data` folder's
-contents and start fresh — the dashboard doesn't care, it just reads
-whatever `.xlsx` files it finds.
+## 8. Confidentiality
+Everything committed to this repository is **fictional sample data** and blank templates. Your real material must never be committed: `ATS_Program/` (your live portfolio folders) and `local_private/` are in `.gitignore`. Generators that embed real programme wording stay local-only (also git-ignored). If you add real data anywhere else, check it before pushing.
 
-## 2. Opening the dashboard
+## 9. Troubleshooting
+| Symptom | Fix |
+|---|---|
+| A portfolio is missing from the dropdown | its workbook needs the sheets `Weekly_Snapshot` + `Defect_Log` and at least one non-EXAMPLE row |
+| Two portfolios merged / one disappeared | `Portfolio Name` in Config must be unique per workbook |
+| "Workbook is loaded but has no weekly rows yet" | add a row to `Weekly_Snapshot` (delete the EXAMPLE row) and click Refresh |
+| POAP / RAID not shown for a portfolio | put the file in that portfolio's folder (or include the portfolio name in the file name) |
+| A KPI shows grey / "No data" | the sheet behind it has no rows up to that period |
+| Refresh asks for the folder again | normal in Firefox/Safari; Chrome/Edge ask to *Allow* once per session |
+| Export PowerPoint / Export PDF does nothing | the browser blocked the download — allow downloads for the page |
 
-Just double-click **`index.html`**. It opens in your default browser
-(Chrome or Edge recommended — Chromium-based browsers support the folder
-picker used to load data). No install, no server, works on a flight with
-Wi-Fi off.
+## 10. Customising
+* Thresholds, budget, dates → `Config`. Topics / dropdown values → `Lists`.
+* Colours/branding → CSS variables at the top of `assets/css/style.css`.
+* Rebuild the embedded demo after changing files in `samples/`: `node tools/build_sample_js.js`.
+* Rebuild the Word/Markdown filling guide after editing its content: `NODE_PATH=$(npm root -g) node tools/build_filling_guide.js`.
+* Regression sweep: with the dashboard open, run `fetch("tools/qa_harness.js").then(r => r.text()).then(eval)` in the browser console, then `await QA.sweepAll()` — it opens every page for every portfolio and reports errors, broken text, overflow and empty charts.
+* The PowerPoint export sits on the client template. To change the look, rebuild the embedded theme from the new deck: `python3 tools/build_pptx_template.py "/path/to/Template.pptx"` (keeps masters, layouts, theme and logos; drops every slide, chart, note and personal metadata).
+* Workbook layouts are specified in `tools/SCHEMA_KPI_WORKBOOK.md` and `tools/SCHEMA_POAP_WORKBOOK.md`.
 
-The first time, click **Load Data Folder** and select the **`ATS_Data`**
-folder itself (not a subfolder inside it). The dashboard scans it for any
-subfolder named like `2026-09` and any `.xlsx` file inside — it automatically
-figures out which months and portfolios you have.
+## 11. Working with AI agents
+This repo is set up so AI agents (a Development agent and a QA agent) can build, test and fix it autonomously. The rules they follow — architecture, conventions, protected paths, confidentiality, definition of done, how to write tests — are in **[`AGENTS.md`](AGENTS.md)**; the machine-readable adapter is `.agent/project.json`. Humans can use the same scripts (Node 22+; the app itself still needs nothing but a browser):
 
-Because browsers require a click to grant folder access, you'll need to
-click **Load / Refresh Data** again any time you add a new month's files —
-the dashboard remembers the last thing you loaded (via your browser's local
-storage) between sessions, so day-to-day you only need to reload when new
-data arrives.
+To let the agents do a task end to end on your machine, use the loop in [azure-ai-automation](https://github.com/achaljoshi/azure-ai-automation) (branch `feature/working-implementation`):
 
-## 3. The monthly cycle
+```bash
+LLM_PROVIDER=anthropic ANTHROPIC_API_KEY=... python <azure-ai-automation>/agents/local_loop.py --repo . --task "Bug: ... steps, expected, actual ..."
+```
 
-1. At the start of each reporting cycle, send each portfolio lead a fresh
-   copy of **`templates/ATS_Portfolio_Template.xlsx`**.
-2. They fill in the **yellow cells only** on both tabs:
-   - **KPI_Summary** — the 8 quality KPIs (Defect Leakage, Automated Testing
-     %, Customer Satisfaction, Risk-Based Test Coverage, Defect Detection,
-     Test Execution Downtime, Defect Turnaround Time, Critical Test Milestone
-     Delays). Target and Actual are entered; RAG status is calculated
-     automatically.
-   - **TSR** — one row per Test Scope Request received that month. They only
-     enter the TSR ID, description, dates received/responded, resource count,
-     and (only if the TSR is still open) a Pending Sub-Status
-     (Approved / Query Raised / Impacted / Impacting). **SLA Due Date,
-     Response Status (SLA Met / Overdue / Pending) and the Breach flag are
-     all calculated automatically from the dates** — nobody has to manually
-     judge whether something breached, which is exactly the accuracy
-     guarantee you need for a fined-if-wrong contractual metric.
-3. They save the file as `<Portfolio Name>.xlsx` (e.g. `Self Assessment.xlsx`)
-   and send it back to you (or drop it in a shared location you control).
-4. You place each file into `ATS_Data/<YYYY-MM>/`, creating that month's
-   folder the first time (e.g. `ATS_Data/2026-10/`).
-5. Open the dashboard, click **Load / Refresh Data**, select the `ATS_Data`
-   folder again. The new month appears in the month selector, and every
-   chart, tile and table can now show **"vs Prior Month"** deltas
-   automatically.
+It works in a separate git worktree on an `ai/<id>-<slug>` branch, re-runs `npm run build`, `npm test` and `npm run test:e2e` itself, and leaves a report; you review and merge.
 
-You never need to touch the HTML/JS files for this — the whole monthly cycle
-is "collect Excel files → drop them in a dated folder → reload."
+| Script | Purpose |
+|---|---|
+| `npm ci` | install (`@playwright/test` only) |
+| `npm run build` | syntax-check every file in `assets/js` and `tools` |
+| `npm test` | fast unit tests (`node:test`, no browser) |
+| `npm run test:e2e` | Playwright smoke tests in Chromium (starts its own server) |
+| `npm run serve` | static server on http://localhost:8765 (`PORT` overrides) |
+| `npm run qa` | build + test + test:e2e (also run by GitHub Actions on every push / PR) |
 
-## 4. Using it in front of a client
+## 12. Hosting on GitLab Pages
+The dashboard is a static site, so GitLab Pages can serve it; `.gitlab-ci.yml` publishes it from the default branch (`node tools/build_pages.js public` copies only `index.html`, `assets/`, `templates/`, `docs/`). Excel data is never uploaded — each user loads their own workbooks in their browser.
+1. Create a GitLab project and push this repo to it (set the project to **Private**).
+2. The first pipeline on the default branch runs the `pages` job (it works on any runner, including a plain shell runner; see below if you have none); the URL appears under **Deploy → Pages**.
+3. **Restrict access:** *Settings → General → Visibility, project features, permissions → Pages* → **Only Project Members**. Do this before sharing the link: the site includes the client PowerPoint theme (logos).
+4. Add people as project members (Reporter is enough to view). Over https, "Load program folder" and "Refresh data" work in Chrome/Edge.
 
-### The four views (left sidebar)
+**No runner?** On **gitlab.com** the shared runners are on by default (new accounts may have to verify identity first). On a **self-hosted** GitLab, or if the job stays *pending/stuck*, install a runner on any always-on machine: *Settings → CI/CD → Runners → New project runner* (copy the command it shows), then `gitlab-runner install && gitlab-runner start`. Give it the tag **`ats-pages`** (the job in `.gitlab-ci.yml` asks for that tag; remove the `tags:` line if you would rather use any runner) and choose the **shell** executor; the job needs nothing but a POSIX shell. A laptop that sleeps will leave the job pending until it wakes.
 
-- **Overview** — program-wide KPI tiles, an SLA outcome donut you can click
-  to drill into the TSR register, and a "portfolios needing attention" list
-  sorted by breach count. Click any of the 16 portfolio cards to drill in.
-- **Portfolios** — pick any portfolio from the dropdown to see its KPI
-  scorecard (8 gauges), SLA donut, pending-TSR breakdown chart, a trend line
-  across every month you've loaded, and the full TSR log (searchable,
-  sortable, filterable). **Click any chart segment or bar to filter the
-  table beneath it** — e.g. click the red "SLA Overdue" slice to instantly
-  see just the breaches.
-- **Trends & Comparison** — three things:
-  1. A program-level trend line (SLA compliance & KPI health across every
-     loaded month).
-  2. A portfolio leaderboard ranked by SLA compliance for the selected month.
-  3. **KPI Deep-Dive** — instead of one generic chart with a metric dropdown,
-     each of the 8 KPIs gets its own panel, visualized the way that metric
-     is actually used:
-     | Metric | Visual | Why |
-     |---|---|---|
-     | Defect Leakage | Ranked bar (best→worst) | Simple ranking |
-     | Level of Automated Testing | Bullet chart (pale target + bold actual) | Target-vs-actual is the point |
-     | Customer Satisfaction | Medal leaderboard (🥇🥈🥉) | Reads like a score, not a metric |
-     | Risk-Based Test Coverage | Stacked bar (Covered vs Gap to 100%) | Coverage is "how much is left" |
-     | Defect Detection Rate | Dot-strip ruler, per-portfolio target tick | Shows spread across the program |
-     | Test Execution Downtime | Ranked bar (fewest→most hours) | Simple ranking, time-themed |
-     | Defect Turnaround Time | Ruler with diamond marker | Same day-scale idea, distinct shape |
-     | Critical Test Milestone Delays | Heatmap tile grid | Values are tiny counts (0-3) — a bar chart would waste space |
+## 13. Attachments: pictures and Outlook emails inside the Excel files
+Put a screenshot (*Insert → Pictures*) or an email (*Insert → Object → Create from File*, tick *Display as icon*, or drag it from Outlook) on the row of a note, defect, TSR, milestone, risk, issue, decision or plan item. After **Refresh data** a paperclip appears next to that item; click it for the **Evidence viewer** (zoomable pictures, a readable email card with its own attachments, *Download*, *Save as .eml*, a gallery and keyboard shortcuts) and see everything in one place under **Appendix → Evidence library**. Details: `docs/HOW_TO_FILL_DATA.md` section 5.10. Email HTML is rendered in a locked-down frame (no scripts, no remote content).
 
-     Every bar, tile, dot and leaderboard row is clickable — it jumps straight
-     to that portfolio's detail view.
-- **TSR Register** — every TSR across every portfolio in one filterable,
-  sortable table, useful for a "here's every breach this month, across the
-  whole program" view. Each row's portfolio name links back to that
-  portfolio's detail view.
-
-### Other controls (top bar)
-
-- **Month selector** — switch which reporting month is on screen.
-- **vs Prior Month** toggle — turns on ▲/▼ delta badges everywhere (KPI
-  tiles, gauges) comparing the selected month to the one before it.
-- **Present** — hides the sidebar/controls and enlarges key numbers, useful
-  when screen-sharing or presenting on a projector. **Exit Present** returns
-  to normal.
-- **Print / PDF** — uses your browser's print dialog with a print-friendly
-  stylesheet, if you want to hand out a PDF snapshot after the meeting.
-
-### A note on filters
-
-Filtering the TSR table (by status, search, or a chart click) carries across
-from the Portfolio view into the TSR Register if you navigate there next —
-this is intentional, so a chart-driven drill-down ("show me this portfolio's
-breaches" → "show me *every* portfolio's breaches") stays consistent. The
-active filter is always shown as a chip you can click to change or clear.
-
-## 5. Customizing
-
-- **Portfolio names**: just rename the `.xlsx` files — the dashboard reads
-  the portfolio name from the filename (and cross-checks it against the
-  "Portfolio Name" cell inside the workbook).
-- **KPI targets**: each portfolio's target values live inside its own
-  workbook (`KPI_Summary` sheet, column F) — set them per portfolio as
-  negotiated with the client.
-- **SLA window**: the template assumes a 5-calendar-day response SLA (per
-  your contract). If that ever changes, open
-  `templates/ATS_Portfolio_Template.xlsx`, edit the `SLA Due Date` formula
-  in the `TSR` sheet (currently `=Date Received + 5`), and re-circulate the
-  updated template.
-- **Colors/branding**: `assets/css/style.css` — the palette is defined as
-  CSS variables at the top of the file if you want to match a specific
-  brand.
-
-## 6. Data privacy
-
-Nothing in this dashboard makes a network request. The two libraries it
-uses (SheetJS for reading Excel files, Chart.js for charts) are bundled
-locally in `assets/lib/` — open `index.html` with Wi-Fi off and it will
-work identically. All parsed data is cached only in your own browser's
-local storage on this machine; nothing is uploaded anywhere.
+* How it works: `assets/js/attachments.js` reads the `.xlsx` package (floating pictures, embedded objects, pictures placed in cells) and an Outlook `.msg` reader; `assets/js/attachments-ui.js` is the viewer; `tools/xlsx_embed.js` and `tools/make_msg.js` build test/demo files; `tools/build_sample_attachments.js` adds the fictional demo attachments to the *Self Assessment* sample (rebuild with `node tools/build_sample_js.js`).
+* Limits: objects inserted as *links* (not embedded) are not stored in the workbook and cannot be shown; an email nested inside an email can be viewed and saved as `.eml` but not as `.msg`; Windows metafile previews (`.emf`) are downloadable only.

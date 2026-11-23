@@ -1,0 +1,2 @@
+# Human-owned. One test title (or "file :: title") per line = a known-flaky test that is skipped by the QA gate.
+# Agents must NOT edit this file. Lines starting with # are comments.
