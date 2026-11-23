@@ -1,11 +1,18 @@
 # GitLab Pages: publishes the dashboard (a static site; it needs no server). Runs on the default branch only.
-# Reports and Excel data are never uploaded: users load their workbooks in their own browser.
-image: node:22-alpine
-
+# Works on any runner (shared, docker or a plain shell runner): it needs only a POSIX shell; Node is used for an extra
+# safety check when it happens to be installed, otherwise the same files are copied with cp.
+# Excel data is never uploaded: users load their workbooks in their own browser.
 pages:
   stage: deploy
   script:
-    - node tools/build_pages.js public
+    - |
+      if command -v node >/dev/null 2>&1; then
+        node tools/build_pages.js public
+      else
+        rm -rf public && mkdir -p public
+        cp -R index.html assets templates docs README.md public/
+        test -s public/index.html
+      fi
   pages: true                     # deploys ./public (the default publish folder)
   rules:
     - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH

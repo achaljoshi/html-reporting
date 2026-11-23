@@ -188,6 +188,8 @@ It works in a separate git worktree on an `ai/<id>-<slug>` branch, re-runs `npm 
 ## 12. Hosting on GitLab Pages
 The dashboard is a static site, so GitLab Pages can serve it; `.gitlab-ci.yml` publishes it from the default branch (`node tools/build_pages.js public` copies only `index.html`, `assets/`, `templates/`, `docs/`). Excel data is never uploaded — each user loads their own workbooks in their browser.
 1. Create a GitLab project and push this repo to it (set the project to **Private**).
-2. The first pipeline on the default branch runs the `pages` job; the URL appears under **Deploy → Pages**.
+2. The first pipeline on the default branch runs the `pages` job (it works on any runner, including a plain shell runner; see below if you have none); the URL appears under **Deploy → Pages**.
 3. **Restrict access:** *Settings → General → Visibility, project features, permissions → Pages* → **Only Project Members**. Do this before sharing the link: the site includes the client PowerPoint theme (logos).
 4. Add people as project members (Reporter is enough to view). Over https, "Load program folder" and "Refresh data" work in Chrome/Edge.
+
+**No runner?** On **gitlab.com** the shared runners are on by default (new accounts may have to verify identity first). On a **self-hosted** GitLab, or if the job stays *pending/stuck*, install a runner on any always-on machine: *Settings → CI/CD → Runners → New project runner* (copy the command it shows), then `gitlab-runner install && gitlab-runner start`. Choose the **shell** executor; the job needs nothing but a POSIX shell. A laptop that sleeps will leave the job pending until it wakes.
