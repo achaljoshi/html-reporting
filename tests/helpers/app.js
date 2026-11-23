@@ -7,7 +7,7 @@ const path = require('path');
 const ROOT = path.resolve(__dirname, '..', '..');
 global.window = global;
 global.XLSX = require(path.join(ROOT, 'assets/lib/xlsx.full.min.js'));
-['core.js', 'kpi-data.js', 'raid.js', 'poap.js'].forEach((f) => require(path.join(ROOT, 'assets/js', f)));
+['core.js', 'kpi-data.js', 'raid.js', 'attachments.js', 'poap.js'].forEach((f) => require(path.join(ROOT, 'assets/js', f)));
 const ATS = global.ATS;
 const XLSX = global.XLSX;
 

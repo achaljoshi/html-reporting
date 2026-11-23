@@ -22,12 +22,15 @@
     return `<span class="sx-delta ${cls}" title="vs ${esc(res.prev ? "previous period" : "")}">${esc(d.text)}${label ? " " + esc(label) : ""}</span>`;
   };
 
+  // attachment chip for a record (pictures / Outlook emails placed on its row in Excel); "" when it has none
+  U.att = (rec, label) => (ATS.att && ATS.att.chipFor ? ATS.att.chipFor(rec, label) : "");
+
   U.list = (arr) => (arr && arr.length ? `<ul>${arr.map((x) => `<li>${esc(x)}</li>`).join("")}</ul>` : `<div class="sx-empty-note">Nothing to report.</div>`);
 
   U.narrative = function (res) {
     const t = (k) => (res.src && res.src[k] === "excel" ? `<span class="tag excel" title="Written in the Commentary sheet of your workbook">From Excel</span>` : `<span class="tag" title="Drafted automatically from the numbers — add a row in the Commentary sheet to override">Auto-drafted</span>`);
     return `
-      <div class="sx-panel hi"><h5>Key Highlights ${t("highlights")}</h5>${U.list(res.highlights)}</div>
+      <div class="sx-panel hi"><h5>Key Highlights ${t("highlights")}${U.att(res.manual, "Commentary — " + res.name)}${res.snapAtt ? ATS.att.chip(res.snapAtt, "Weekly snapshot") : ""}</h5>${U.list(res.highlights)}</div>
       <div class="sx-panel co"><h5>Area of Concern ${t("concern")}</h5>${U.list(res.concern)}</div>
       <div class="sx-panel ac"><h5>Actions Underway ${t("actions")}</h5>${U.list(res.actions)}</div>
       <div class="sx-panel ex"><h5>Executive Commentary ${t("exec")}</h5><p>${esc(res.exec || "—")}</p></div>`;

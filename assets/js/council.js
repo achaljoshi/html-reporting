@@ -38,7 +38,7 @@
         <div class="ring">${U.ring(scored ? cnt.Green / scored : 0, "#22c55e", 96, scored ? Math.round((cnt.Green / scored) * 100) + "%" : "–")}</div>
         <div>
           <div class="sx-eyebrow" style="color:#7fe3de">${esc(o.eyebrow || "Programme status")}</div>
-          <h3>${esc(env.data.config.programName)} — Overall <span class="chip ${R.cls(ov.rag)}" style="margin-left:8px;vertical-align:middle">${esc(ov.rag === "Grey" ? "N/A" : ov.rag)}</span></h3>
+          <h3>${esc(env.data.config.programName)} — Overall <span class="chip ${R.cls(ov.rag)}" style="margin-left:8px;vertical-align:middle">${esc(ov.rag === "Grey" ? "N/A" : ov.rag)}</span>${U.att(ov, "Overall status")}</h3>
           <p class="clamp" title="Click to expand / collapse" onclick="this.classList.toggle('open')">${esc(ov.summary || autoSummary(all))}</p>
           ${ov.declared && ov.computed !== ov.declared ? `<p style="margin-top:6px;font-size:11.5px;color:#9fb4e8">Declared RAG <b>${esc(ov.declared)}</b> (your judgement) · computed from KPIs <b>${esc(ov.computed)}</b></p>` : ""}
         </div>
@@ -103,14 +103,14 @@
 
   ATS.pages.lessons = function (env) {
     const rows = env.data.lessons.slice().sort((a, b) => ((a.date || "") < (b.date || "") ? 1 : -1));
-    const tbl = rows.length ? U.table(["Date", "Category", "Lesson learned", "Improvement action", "Owner", "Status"], rows.map((r) => [r.date ? D.fmt(r.date, false) : "—", esc(r.category), esc(r.lesson), esc(r.action), esc(r.owner), esc(r.status)]), { wrap: true })
+    const tbl = rows.length ? U.table(["Date", "Category", "Lesson learned", "Improvement action", "Owner", "Status"], rows.map((r) => [r.date ? D.fmt(r.date, false) : "—", esc(r.category), esc(r.lesson) + U.att(r, "Lesson — " + r.lesson.slice(0, 50)), esc(r.action), esc(r.owner), esc(r.status)]), { wrap: true })
       : `<div class="sx-callout info">No lessons recorded yet. Add rows to the <b>Lessons_Learned</b> sheet of your workbook.</div>`;
     const html = U.slide({ id: env.prefix + "slide-lessons", eyebrow: "Risks, Issues & Lessons — Lessons Learned", title: "Lessons Learned", sub: "Post-transition lessons and improvement actions", left: tbl, single: true, foot: "Source: Lessons_Learned sheet" + (ATS.isSample() ? ' · <b style="color:#b54708">SAMPLE DATA</b>' : "") });
     return { html, draw() {} };
   };
 
   ATS.pages.checks = function (env) {
-    const q = K.quality(env.data, env.all.asOf).concat(ATS.poap && ATS.poap.quality && ATS.store.poap ? ATS.poap.quality(ATS.store.poap) : []).concat(ATS.raid && ATS.raid.quality && env.raid ? ATS.raid.quality(env.raid) : []);
+    const q = K.quality(env.data, env.all.asOf).concat(ATS.poap && ATS.poap.quality && ATS.store.poap ? ATS.poap.quality(ATS.store.poap) : []).concat(ATS.raid && ATS.raid.quality && env.raid ? ATS.raid.quality(env.raid) : []).concat(ATS.att && ATS.att.quality ? ATS.att.quality() : []);
     const d = env.data;
     const meta = ATS.store.meta;
     const files = (meta.files || []).map((f) => `<span class="chip green">${esc(f.kind.toUpperCase())}</span> ${esc(f.name)} <span class="sx-dim">— ${esc(f.note || "")}</span>`).join("<br>");

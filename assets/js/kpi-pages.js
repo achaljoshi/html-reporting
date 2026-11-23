@@ -55,7 +55,7 @@
     const list = (res.detail.open || []).slice(0, 8);
     const left = `<div class="sx-stats">${U.stat(d.ft, "Found in testing", U.deltaChip(res))}${U.stat(d.fp, "Escaped to prod")}${U.stat(d.dde == null ? "—" : N.pct(d.dde), "Detection effectiveness")}${U.stat(d.perPeriod, "Raised this " + ctx.period.type)}${U.stat(N.pct1(d.rejPct), "Rejection rate")}</div>
       <div class="sx-grid2">${U.chartBox(p + "dd-a", 230, "Raised vs rejected", "by priority, this " + ctx.period.type)}${U.chartBox(p + "dd-b", 230, "Defects raised per week", "bars = new, line = cumulative")}</div>
-      <div><div class="sx-ctitle">Open defects ${d.open.length ? "" : "— none"}</div>${d.open.length ? U.table(["ID", "Summary", "Priority", "Status", "Raised", "TCs blocked"], list.map((x) => [`<b>${esc(x.id)}</b>`, esc(x.summary), esc(x.priority), esc(x.status), D.fmt(x.raised, false), N.int(x.blocked)]), { wrap: true }) : ""}</div>`;
+      <div><div class="sx-ctitle">Open defects ${d.open.length ? "" : "— none"}</div>${d.open.length ? U.table(["ID", "Summary", "Priority", "Status", "Raised", "TCs blocked"], list.map((x) => [`<b>${esc(x.id)}</b>${U.att(x, "Defect " + x.id)}`, esc(x.summary), esc(x.priority), esc(x.status), D.fmt(x.raised, false), N.int(x.blocked)]), { wrap: true }) : ""}</div>`;
     return {
       left,
       draw(root) {
@@ -101,7 +101,7 @@
     const open = d.open.slice().sort((a, b) => b.days - a.days).slice(0, 8);
     const left = `<div class="sx-stats">${U.stat(N.pct(d.compliance), "Within SLA (" + d.sla + "d)", U.deltaChip(res))}${U.stat(d.list.length, "Defects in scope")}${U.stat(d.open.length, "Open")}${U.stat(d.avg == null ? "—" : d.avg.toFixed(1) + "d", "Avg turnaround")}${U.stat(d.openOver10.length, "Open > 10 days")}</div>
       <div class="sx-grid2">${U.chartBox(p + "ag-a", 230, "Aging buckets", "working days")}${U.chartBox(p + "ag-b", 230, "Aging per defect", "working days vs SLA")}</div>
-      ${open.length ? `<div><div class="sx-ctitle">Oldest open defects</div>${U.table(["ID", "Summary", "Priority", "Age (WD)", "Owner"], open.map((x) => [`<b>${esc(x.d.id)}</b>`, esc(x.d.summary), esc(x.d.priority), `<b style="color:${x.days > 10 ? C.red : "inherit"}">${x.days}</b>`, esc(x.d.owner)]), { wrap: true })}</div>` : ""}`;
+      ${open.length ? `<div><div class="sx-ctitle">Oldest open defects</div>${U.table(["ID", "Summary", "Priority", "Age (WD)", "Owner"], open.map((x) => [`<b>${esc(x.d.id)}</b>${U.att(x.d, "Defect " + x.d.id)}`, esc(x.d.summary), esc(x.d.priority), `<b style="color:${x.days > 10 ? C.red : "inherit"}">${x.days}</b>`, esc(x.d.owner)]), { wrap: true })}</div>` : ""}`;
     return {
       left,
       draw(root) {
@@ -130,7 +130,7 @@
     const ribbon = `<div class="sx-ribbon2" id="${p}ribbon"></div>`;
     const left = `<div class="sx-stats">${U.stat(N.pct(d.adherence), "Adherence", U.deltaChip(res))}${U.stat(d.completed + d.late, "Completed")}${U.stat(d.onSched, "On schedule")}${U.stat(d.overdue, "Overdue")}${U.stat(d.critDelay + "d", "Critical delay")}</div>
       <div><div class="sx-ctitle">Milestone timeline <span class="sx-csub">· colour = RAG, line = today · hover for detail</span></div>${ribbon}</div>
-      ${U.table(["Milestone", "Due", "Forecast", "Completed", "Status", "RAG"], ev.map((e) => [esc(e.m.name) + (e.m.critical ? ' <span class="chip red" style="padding:0 6px">critical</span>' : ""), D.fmt(e.m.due, false), e.m.forecast ? D.fmt(e.m.forecast, false) : "—", e.m.completed ? D.fmt(e.m.completed, false) : "—", esc(e.status) + (e.delay ? ` (${e.delay}d)` : ""), R.chip(e.rag)]), { wrap: true })}`;
+      ${U.table(["Milestone", "Due", "Forecast", "Completed", "Status", "RAG"], ev.map((e) => [esc(e.m.name) + U.att(e.m, "Milestone — " + e.m.name) + (e.m.critical ? ' <span class="chip red" style="padding:0 6px">critical</span>' : ""), D.fmt(e.m.due, false), e.m.forecast ? D.fmt(e.m.forecast, false) : "—", e.m.completed ? D.fmt(e.m.completed, false) : "—", esc(e.status) + (e.delay ? ` (${e.delay}d)` : ""), R.chip(e.rag)]), { wrap: true })}`;
     return {
       left,
       draw(root) {
@@ -174,7 +174,7 @@
     const items = d.items || [];
     const left = `<div class="sx-stats">${U.stat(items.length, "TSRs in scope")}${U.stat(d.recvIn || 0, "Received this " + ctx.period.type)}${U.stat(d.over || 0, "Over " + d.sla + "-day limit")}${U.stat(d.avg == null ? "—" : d.avg.toFixed(1) + "d", "Avg working days")}</div>
       ${items.length ? U.chartBox(p + "tsr-a", 230, "Working days per TSR", "limit = " + d.sla + " days (hold days excluded)") : '<div class="sx-callout green">No TSRs required assessment in this period.</div>'}
-      ${items.length ? U.table(["TSR", "Description", "Received", "Returned", "Hold", "Working days", "SLA"], items.map((x) => [`<b>${esc(x.t.ref)}</b>`, esc(x.t.desc), D.fmt(x.t.received, false), x.open ? "Open" : D.fmt(x.t.returned, false), x.t.hold || 0, `<b>${x.wd}</b>`, x.over ? R.chip("Red", "Over") : R.chip("Green", "Within")]), { wrap: true }) : ""}`;
+      ${items.length ? U.table(["TSR", "Description", "Received", "Returned", "Hold", "Working days", "SLA"], items.map((x) => [`<b>${esc(x.t.ref)}</b>${U.att(x.t, "TSR " + x.t.ref)}`, esc(x.t.desc), D.fmt(x.t.received, false), x.open ? "Open" : D.fmt(x.t.returned, false), x.t.hold || 0, `<b>${x.wd}</b>`, x.over ? R.chip("Red", "Over") : R.chip("Green", "Within")]), { wrap: true }) : ""}`;
     return {
       left,
       draw(root) {
@@ -290,7 +290,7 @@
     const dx = t.executed - pt.executed;
     const left = `<div class="sx-stats">${U.stat(N.int(t.planned), "Planned")}${U.stat(N.int(t.executed), "Executed", `<span class="sx-delta ${dx > 0 ? "good" : "neu"}">+${N.int(dx)} this ${ctx.period.type}</span>`)}${U.stat(N.int(t.passed), "Passed")}${U.stat(N.int(t.failed), "Failed")}${U.stat(N.int(t.blocked), "Blocked")}${U.stat(N.pct(d.passRate), "Pass rate")}</div>
       <div class="sx-grid2">${U.chartBox(p + "ex-a", 250, "Execution burn-up", "cumulative vs planned")}${U.chartBox(p + "ex-b", 250, "Weekly throughput", "test cases executed per week")}</div>
-      ${U.table(["Topic", "Phase", "Planned", "Designed", "Passed", "Failed", "Blocked", "% executed"], d.rows.map((r) => [`<b>${esc(r.topic)}</b>`, esc(r.phase), N.int(r.planned), N.pct(r.planned ? r.designed / r.planned : null), N.int(r.passed), N.int(r.failed), N.int(r.blocked), N.pct(r.planned ? (r.passed + r.failed) / r.planned : null)]), { wrap: true })}`;
+      ${U.table(["Topic", "Phase", "Planned", "Designed", "Passed", "Failed", "Blocked", "% executed"], d.rows.map((r) => [`<b>${esc(r.topic)}</b>${U.att(r, r.topic)}`, esc(r.phase), N.int(r.planned), N.pct(r.planned ? r.designed / r.planned : null), N.int(r.passed), N.int(r.failed), N.int(r.blocked), N.pct(r.planned ? (r.passed + r.failed) / r.planned : null)]), { wrap: true })}`;
     return {
       left,
       draw(root) {
@@ -331,12 +331,12 @@
       ["deps", "Dependencies", s.openDeps, `open · ${s.depsDue.length} needed in 30 days`],
       ["decisions", "Decisions", s.decisionsPending || 0, `pending of ${s.decisionsTotal || 0} logged`],
     ];
-    const attention = s.risksOpen.filter((r) => /High/.test(r.rating)).map((r) => ({ kind: "Risk", id: r.id, title: r.title, rating: r.rating, owner: r.owner, score: r.score || 0 }))
-      .concat(s.issuesOpen.filter((i) => /High/.test(i.rating)).map((i) => ({ kind: "Issue", id: i.id, title: i.title, rating: i.rating, owner: i.owner, score: i.score || 0 }))).sort((a, b) => b.score - a.score);
+    const attention = s.risksOpen.filter((r) => /High/.test(r.rating)).map((r) => ({ rec: r, kind: "Risk", id: r.id, title: r.title, rating: r.rating, owner: r.owner, score: r.score || 0 }))
+      .concat(s.issuesOpen.filter((i) => /High/.test(i.rating)).map((i) => ({ rec: i, kind: "Issue", id: i.id, title: i.title, rating: i.rating, owner: i.owner, score: i.score || 0 }))).sort((a, b) => b.score - a.score);
     const left = `<div class="sx-ctitle">The RAID log at a glance <span class="sx-csub">· click a card to open its page</span></div>
       <div class="sx-stats">${cards.map((c) => `<button type="button" class="sx-stat" data-go="${c[0]}" style="text-align:left;cursor:pointer"><b>${c[2]}</b><span>${esc(c[1])}</span><small class="sx-dim" style="display:block;margin-top:2px">${esc(c[3])}</small></button>`).join("")}</div>
       <div class="sx-grid2"><div><div class="sx-ctitle">Open risks by rating</div>${ATS.raid.bandBars(s.riskBands)}</div><div><div class="sx-ctitle">Open issues by rating</div>${ATS.raid.bandBars(s.issueBands)}</div></div>
-      <div><div class="sx-ctitle">Needs attention <span class="sx-csub">· open High / Very High risks and issues</span></div>${attention.length ? U.table(["Type", "ID", "Item", "Rating", "Owner"], attention.slice(0, 8).map((a) => [esc(a.kind), `<b>${esc(a.id)}</b>`, esc(a.title.length > 120 ? a.title.slice(0, 119) + "…" : a.title), ATS.raid.ratingChip(a.rating), esc(a.owner)]), { wrap: true }) : '<div class="sx-empty-note">No High or Very High risks or issues are open.</div>'}</div>`;
+      <div><div class="sx-ctitle">Needs attention <span class="sx-csub">· open High / Very High risks and issues</span></div>${attention.length ? U.table(["Type", "ID", "Item", "Rating", "Owner"], attention.slice(0, 8).map((a) => [esc(a.kind), `<b>${esc(a.id)}</b>${U.att(a.rec, a.kind + " " + a.id)}`, esc(a.title.length > 120 ? a.title.slice(0, 119) + "…" : a.title), ATS.raid.ratingChip(a.rating), esc(a.owner)]), { wrap: true }) : '<div class="sx-empty-note">No High or Very High risks or issues are open.</div>'}</div>`;
     return { left, draw(root) { root.querySelectorAll("[data-go]").forEach((b) => (b.onclick = () => ctx.open(b.dataset.go))); } };
   };
 })();

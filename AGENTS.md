@@ -12,7 +12,8 @@ features and a QA agent tests them; both are driven by the `azure-ai-automation`
 5. Data flow: Excel workbooks -> `ATS.loadFiles` -> `ATS.kpi.parse` / `ATS.poap.parse` / `ATS.raid.parse` -> `ATS.groupPortfolios` -> `ATS.store` (persisted in IndexedDB) -> pages.
 6. `assets/js/core.js` helpers + store + grouping · `kpi-data.js` KPI parse + all KPI maths (`ATS.kpi.computeAll`) · `raid.js` RAID parse/summary · `poap.js` POAP parse + the whole POAP UI.
 7. Pages: `council.js` (section framework), `monthly.js` / `weekly.js` (page lists), `kpi-pages.js` (one visual per KPI), `raid-pages.js`, `programme.js` (all-portfolio overview), `shell.js` (sidebar, routing, loading).
-8. Exports: `pptx-export.js` (+ `pptx-template.js`, the client theme — protected), `pdf-export.js`.
+8. Attachments: `attachments.js` (reads pictures / Outlook `.msg` / files out of the `.xlsx`, links them to records by sheet row; records carry `row` and `att` ids) and `attachments-ui.js` (chips, Evidence viewer, library page). Email HTML is untrusted: it is only ever shown in a sandboxed iframe, all other text goes through `ATS.dom.esc`, MIME types through `ATS.att.safeMime`.
+9. Exports: `pptx-export.js` (+ `pptx-template.js`, the client theme — protected), `pdf-export.js`.
 9. Demo data is **embedded**: `assets/js/sample-data.js` is generated from `samples/ATS_Program_SAMPLE/**` by `node tools/build_sample_js.js`. Re-run it (and commit the result) whenever a parser changes the parsed shape.
 10. **Bump `ATS.VER`** (top of the data store in `core.js`) whenever the *shape* of parsed data changes; it invalidates the browser's cached dataset.
 11. Dates are ISO `YYYY-MM-DD` strings everywhere; working-day maths uses `ATS.date.networkdays` with UK bank holidays from the workbook.

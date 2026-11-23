@@ -54,7 +54,7 @@
       const i = N.num(X.field(r, "impactrating")) || IMP[N.str(X.field(r, "impact")).toLowerCase()] || null;
       const score = l && i ? l * i : null;
       return {
-        id: N.str(r.id), title: N.str(X.field(r, "summarytitle")), desc: N.str(X.field(r, "description")), category: N.str(X.field(r, "category")),
+        row: r._row, id: N.str(r.id), title: N.str(X.field(r, "summarytitle")), desc: N.str(X.field(r, "description")), category: N.str(X.field(r, "category")),
         likelihood: N.str(X.field(r, "likelihood")), l, impact: N.str(X.field(r, "impact")), i, score, rating: RA.bandOf(score) || N.str(X.field(r, "riskscore")),
         status: N.str(X.field(r, "status")) || "Open", mitigation: N.str(X.field(r, "mitigationdetails", "mitigation")), owner: N.str(X.field(r, "owner")),
         review: D.toIso(X.field(r, "reviewdate")), where: N.str(X.field(r, "whereraised")), prog: isYes(X.field(r, "prograid")), archived: isYes(r.archived),
@@ -65,7 +65,7 @@
       const s = N.num(X.field(r, "severityrating")) || IMP[N.str(X.field(r, "severity")).toLowerCase()] || null;
       const score = p && s ? p * s : null;
       return {
-        id: N.str(r.id), title: N.str(X.field(r, "summarytitle")), desc: N.str(X.field(r, "fulldescription", "description")), tracking: N.str(X.field(r, "trackingid")),
+        row: r._row, id: N.str(r.id), title: N.str(X.field(r, "summarytitle")), desc: N.str(X.field(r, "fulldescription", "description")), tracking: N.str(X.field(r, "trackingid")),
         reporter: N.str(X.field(r, "reporter")), owner: N.str(X.field(r, "owner")), reported: D.toIso(X.field(r, "datereported")), priority: N.str(X.field(r, "priority")), p,
         severity: N.str(X.field(r, "severity")), s, score, rating: RA.bandOf(score) || N.str(X.field(r, "overallissuerating")), status: N.str(X.field(r, "status")) || "Open",
         originalRisk: N.str(X.field(r, "originalriskid")), target: D.toIso(X.field(r, "targetresolutiondate")), actual: D.toIso(X.field(r, "actualresolutiondate")),
@@ -73,19 +73,19 @@
       };
     });
     const assumptions = X.table(wb, "Assumptions", ["ID", "Description", "Raised By", "Confidence Level", "Status"]).filter((r) => real(r, "description")).map((r) => ({
-      id: N.str(r.id), desc: N.str(X.field(r, "description")), by: N.str(X.field(r, "raisedby")), logged: D.toIso(X.field(r, "datelogged")), confidence: N.str(X.field(r, "confidencelevel")),
+      row: r._row, id: N.str(r.id), desc: N.str(X.field(r, "description")), by: N.str(X.field(r, "raisedby")), logged: D.toIso(X.field(r, "datelogged")), confidence: N.str(X.field(r, "confidencelevel")),
       impact: N.str(X.field(r, "impactifassumption")), validation: N.str(X.field(r, "validationaction")), due: D.toIso(X.field(r, "validationduedate")), status: N.str(X.field(r, "status")) || "Unconfirmed",
       notes: N.str(X.field(r, "notesactions")), archived: isYes(r.archived),
     }));
     const deps = X.table(wb, "Dependencies", ["ID", "Description", "Dependency For (Who Needs This)", "Type", "Priority", "Status"]).filter((r) => real(r, "description")).map((r) => ({
-      id: N.str(r.id), desc: N.str(X.field(r, "description")), forWho: N.str(X.field(r, "dependencyfor")), from: N.str(X.field(r, "dependencyfrom")), type: N.str(X.field(r, "type")),
+      row: r._row, id: N.str(r.id), desc: N.str(X.field(r, "description")), forWho: N.str(X.field(r, "dependencyfor")), from: N.str(X.field(r, "dependencyfrom")), type: N.str(X.field(r, "type")),
       required: D.toIso(X.field(r, "daterequired")), requestor: N.str(X.field(r, "requestor")), owner: N.str(X.field(r, "owner")), priority: N.str(X.field(r, "priority")),
       p: LVL[N.str(X.field(r, "priority")).toLowerCase()] || null, impact: N.str(X.field(r, "impactifnotmet")), status: N.str(X.field(r, "status")) || "Open", notes: N.str(X.field(r, "notesactions")), archived: isYes(r.archived),
     }));
     // Decisions sheet (optional — older RAID logs have none). Sheet name tolerant: Decisions / Decision Log / Decision.
     const decName = wb.SheetNames.find((n) => /^decisions?( log)?$/i.test(n.trim()));
     const decisions = !decName ? [] : X.table(wb, decName, ["ID", "Summary Title", "Decision", "Status"]).filter((r) => real(r, "summarytitle", "title", "decisiondescription", "description", "decision")).map((r) => ({
-      id: N.str(r.id), title: N.str(X.field(r, "summarytitle", "title", "decision")), desc: N.str(X.field(r, "decisiondescription", "description", "decisiondetails")),
+      row: r._row, id: N.str(r.id), title: N.str(X.field(r, "summarytitle", "title", "decision")), desc: N.str(X.field(r, "decisiondescription", "description", "decisiondetails")),
       category: N.str(X.field(r, "category", "type")), maker: N.str(X.field(r, "decisionmakerforum", "decisionmaker", "madeby", "forum", "approver")),
       decided: D.toIso(X.field(r, "datedecided", "decisiondate", "date")), rationale: N.str(X.field(r, "rationale", "reason")), impact: N.str(X.field(r, "impactofdecision", "impact")),
       status: N.str(X.field(r, "status")) || "Pending", owner: N.str(X.field(r, "owner")), review: D.toIso(X.field(r, "reviewdate")),

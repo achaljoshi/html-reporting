@@ -194,7 +194,7 @@
   }
   function sheetRows(ws) {
     if (!ws) return [];
-    return XLSX.utils.sheet_to_json(ws, { header: 1, raw: true, cellDates: true, defval: null, blankrows: true });
+    return XLSX.utils.sheet_to_json(ws, { header: 1, raw: true, cellDates: true, defval: null, blankrows: true, range: 0 }); // range 0: index 0 = Excel row 1, so row numbers match attachments
   }
   function mapColumns(row, spec, resultKeys) {
     var map = {}, normRow = row.map(norm);
@@ -709,6 +709,12 @@
     return '<a href="#" class="poap-link" data-poap-focus="' + esc(id) + '"><i class="poap-sw" style="background:' + o.color + '"></i><span class="poap-link-t">' + esc(o.item) + '</span><span class="poap-link-m">' +
       esc(o.id) + " · " + (o.s != null ? fmtD(o.s, true) + "–" + fmtD(o.e, true) : "dates TBC") + "</span></a>";
   }
+  // pictures / Outlook emails placed on the workbook row of this item (see assets/js/attachments*.js)
+  function attHtml(rec, label) {
+    if (!rec || !rec.att || !rec.att.length || !window.ATS || !ATS.att || !ATS.att.list) return "";
+    return '<div class="poap-dr-sec"><h4>Attachments (' + rec.att.length + ')</h4>' + ATS.att.list(rec.att, label) + "</div>";
+  }
+  var CLIP = '<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5l-8.6 8.6a5 5 0 01-7.1-7.1l8.9-8.9a3.3 3.3 0 014.7 4.7l-8.9 8.9a1.7 1.7 0 01-2.4-2.4l8.2-8.2"/></svg>';
   function barDrawerHtml(b) {
     var rows = "";
     var slipChip = b.slip ? chipHtml(slipText(b) + " vs baseline", b.slip > 0 ? "red" : "green") : "";
@@ -725,6 +731,7 @@
       fact("Owner", esc(b.owner)) + fact("Workbook row", b.wbRow ? "POAP_Plan!" + b.wbRow : "") + "</div>";
     if (b.scope) rows += '<div class="poap-dr-sec"><h4>Scope / notes</h4><div class="poap-prose">' + paraHtml(b.scope) + "</div></div>";
     if (b.notes) rows += '<div class="poap-dr-sec"><h4>Notes</h4><div class="poap-prose">' + paraHtml(b.notes) + "</div></div>";
+    rows += attHtml(b.raw, b.id + " " + b.item);
     if (b.deps.length) rows += '<div class="poap-dr-sec"><h4>Depends on (' + b.deps.length + ')</h4><div class="poap-links">' + b.deps.map(linkBar).join("") + "</div></div>";
     if (b.succ.length) rows += '<div class="poap-dr-sec"><h4>Blocks / feeds (' + b.succ.length + ')</h4><div class="poap-links">' + b.succ.map(linkBar).join("") + "</div></div>";
     var siblings = S.model.ms.filter(function (m) { return m.key === b.key; });
@@ -741,6 +748,7 @@
     r += '<div class="poap-dr-chips">' + chipHtml(m.status, statusKind(m.status)) + chipHtml(relDays(m.dn), "grey") + "</div>";
     r += '<div class="poap-facts">' + fact("Date", fmtD(m.dn)) + fact("Type", esc(m.type)) + fact("Days to go", String(m.dn - S.model.statusDn)) + fact("Workbook row", m.raw && m.raw.row ? "POAP_Milestones!" + m.raw.row : "") + "</div>";
     if (m.notes) r += '<div class="poap-dr-sec"><h4>Notes</h4><div class="poap-prose">' + paraHtml(m.notes) + "</div></div>";
+    r += attHtml(m.raw, "Milestone — " + m.name);
     var near = S.model.bars.filter(function (b) { return b.key === m.key && !b.isHol; }).slice(0, 8);
     if (near.length) r += '<div class="poap-dr-sec"><h4>Activities in this topic</h4><div class="poap-links">' + near.map(function (b) { return linkBar(b.id); }).join("") + "</div></div>";
     r += '<div class="poap-dr-actions"><button type="button" class="btn btn-primary btn-sm" data-poap-show="ms:' + esc(m.id) + '">Show on roadmap</button></div>';
@@ -764,6 +772,7 @@
     r += '<div class="poap-dr-sec"><h4>Results</h4><div class="poap-resrow">' + resChip("2xx", f.r2xx) + resChip("3xx", f.r3xx) + resChip("4xx", f.r4xx) + resChip("5xx", f.r5xx) + "</div></div>";
     r += '<div class="poap-facts">' + fact("Planned date", f.dn != null ? fmtD(f.dn) : "TBC") + fact("Test no", esc(f.testNo)) + fact("Parent test", esc(f.parent)) + fact("Document", esc(f.doc)) + fact("Workbook row", f.row ? "P2P_Matrix!" + f.row : "") + "</div>";
     if (f.notes) r += '<div class="poap-dr-sec"><h4>Notes</h4><div class="poap-prose">' + paraHtml(f.notes.replace(/;\s+/g, " | ")) + "</div></div>";
+    r += attHtml(f.raw, "Flow " + (f.id || ""));
     return r;
   }
   var groupStore = {};
@@ -1455,7 +1464,7 @@
             } else {
               var b = rw.b;
               le.setAttribute("data-id", b.id); le.setAttribute("role", "button"); le.setAttribute("tabindex", "0");
-              le.innerHTML = (b.rag ? '<i class="poap-rag poap-rag-' + b.rag.toLowerCase() + '"></i>' : '<i class="poap-rag poap-rag-none"></i>') + '<span class="poap-rl-name" title="' + esc(b.item) + '">' + esc(b.item) + "</span>" +
+              le.innerHTML = (b.rag ? '<i class="poap-rag poap-rag-' + b.rag.toLowerCase() + '"></i>' : '<i class="poap-rag poap-rag-none"></i>') + '<span class="poap-rl-name" title="' + esc(b.item) + '">' + esc(b.item) + "</span>" + (b.raw && b.raw.att && b.raw.att.length ? '<span class="poap-rl-att" title="' + b.raw.att.length + ' attachment(s) — open the item to view">' + CLIP + "</span>" : "") +
                 '<span class="poap-rl-meta">' + (b.s != null ? fmtD(b.s, true) : "TBC") + "</span>";
             }
             R.labels[lk] = le; fragL.appendChild(le);

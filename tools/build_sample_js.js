@@ -6,7 +6,7 @@ const fs = require('fs'), path = require('path');
 const root = path.resolve(__dirname, '..');
 global.window = global;
 global.XLSX = require(path.join(root, 'assets/lib/xlsx.full.min.js'));
-['core.js', 'kpi-data.js', 'raid.js'].forEach((f) => require(path.join(root, 'assets/js', f)));
+['core.js', 'kpi-data.js', 'raid.js', 'attachments.js'].forEach((f) => require(path.join(root, 'assets/js', f)));
 const poapPath = path.join(root, 'assets/js/poap.js');
 if (fs.existsSync(poapPath)) { try { require(poapPath); } catch (e) { console.warn('poap.js failed to load in node:', e.message); } }
 const ATS = global.ATS;
@@ -28,6 +28,7 @@ files.forEach((f) => {
   if (ATS.kpi.detect(wb)) kind = 'kpi'; else if (ATS.poap && ATS.poap.detect(wb)) kind = 'poap'; else if (ATS.raid.detect(wb)) kind = 'raid';
   if (!kind) { console.warn('skipped', f.dir + '/' + f.name); return; }
   const parsed = ATS[kind].parse(wb);
+  ATS.att.link(kind, parsed, ATS.att.extract(new Uint8Array(fs.readFileSync(f.full))), f.name);
   const sz = kind === 'kpi' ? parsed.snapshots.length + parsed.defects.length : kind === 'poap' ? (parsed.plan || []).length : parsed.risks.length + parsed.issues.length;
   items.push({ kind, parsed, dir: f.dir, fileName: f.name, ts: fs.statSync(f.full).mtimeMs, sz });
 });

@@ -31,6 +31,7 @@
       add("Commercials & Delivery", kpiPage("resource", "Resourcing", "Resource Position"));
       add("Commercials & Delivery", kpiPage("demand", "Demand Pipeline Forecast", "Demand Forecast"));
       add("Appendix", kpiPage("readiness", "Appendix — SIT Readiness Dashboard", "SIT Readiness"));
+      add("Appendix", { id: "evidence", label: "Evidence library", render: (e) => ATS.pages.evidence(e) });
       add("Appendix", { id: "checks", label: "Data Quality", render: (e) => ATS.pages.checks(e) });
       return pg;
     },

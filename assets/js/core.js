@@ -164,7 +164,7 @@
   // ------------------------------------------------------------------
   const X = {
     aoa(ws) {
-      return XLSX.utils.sheet_to_json(ws, { header: 1, defval: null, raw: true, blankrows: true });
+      return XLSX.utils.sheet_to_json(ws, { header: 1, defval: null, raw: true, blankrows: true, range: 0 }); // range 0: index 0 = Excel row 1, so _row matches the row attachments are anchored to
     },
     // find header row (best match of wanted normalized names) in first N rows
     findHeader(aoa, wanted, maxScan = 15) {
@@ -250,7 +250,7 @@
   ATS.on = (ev, fn) => { (listeners[ev] = listeners[ev] || []).push(fn); };
   ATS.emit = (ev, payload) => { (listeners[ev] || []).forEach((fn) => { try { fn(payload); } catch (e) { console.error(e); } }); };
 
-  ATS.VER = 8; // bump when parsed-data shape changes (invalidates cached data)
+  ATS.VER = 9; // bump when parsed-data shape changes (invalidates cached data)
   ATS.store = { portfolios: {}, order: [], current: null, kpi: null, poap: null, raid: null, meta: { source: "none", loadedAt: null, files: [] } };
 
   ATS.portfolioNames = () => ATS.store.order.slice();
@@ -263,6 +263,7 @@
     return true;
   };
   function applyPortfolios(list, meta) {
+    queueMicrotask(() => { if (ATS.att && ATS.att.rebuild) ATS.att.rebuild(); });
     const st = ATS.store, prev = st.current;
     st.portfolios = {}; st.order = [];
     list.slice().sort((a, b) => a.name.localeCompare(b.name)).forEach((p) => { st.portfolios[p.name] = { kpi: p.kpi || null, poap: p.poap || null, raid: p.raid || null, dir: p.dir || "" }; st.order.push(p.name); });
@@ -293,6 +294,7 @@
       if (!p || p.ver !== ATS.VER || !p.order || !p.order.length) return false;
       const st = ATS.store;
       st.portfolios = p.portfolios; st.order = p.order; st.meta = p.meta || st.meta;
+      if (ATS.att && ATS.att.rebuild) ATS.att.rebuild();                       // attachments restored with the data
       ATS.setPortfolio(p.current && st.portfolios[p.current] ? p.current : st.order[0], true);
       return true;
     } catch (e) { return false; }
@@ -400,9 +402,10 @@
         if (!kind) { report.push({ name: f.name, kind: "ignored", note: "Not a recognised ATS workbook" }); continue; }
         const mod = ATS[kind], parsed = mod.parse(wb);
         if (!parsed) { report.push({ name: f.name, kind, note: "Could not read" }); continue; }
+        if (ATS.att) ATS.att.link(kind, parsed, ATS.att.extract(new Uint8Array(buf)), f.name);     // pictures / Outlook emails placed in the workbook
         const sz = kind === "kpi" ? parsed.snapshots.length + parsed.defects.length : kind === "poap" ? (parsed.plan || []).length : parsed.risks.length + parsed.issues.length;
         items.push({ kind, parsed, dir: dirOf(f), fileName: f.name, ts: f.lastModified || 0, sz });
-        report.push({ name: f.name, kind, dir: dirOf(f), note: mod.describe ? mod.describe(parsed) : "OK" });
+        report.push({ name: f.name, kind, dir: dirOf(f), note: (mod.describe ? mod.describe(parsed) : "OK") + (parsed.attachments && parsed.attachments.length ? ` · ${parsed.attachments.length} attachment(s)` : "") });
       } catch (e) {
         console.error("Failed to read", f.name, e);
         report.push({ name: f.name, kind: "error", note: String(e.message || e) });

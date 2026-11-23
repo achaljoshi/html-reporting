@@ -139,6 +139,7 @@
       add("Commercial", kpiPage("commercial", "Commercials", "Commercials"));
       add("Commercial", kpiPage("resource", "Resourcing", "Resourcing"));
       add("Look ahead", { id: "look", label: "4-Week Look-ahead", render: (e) => ({ html: lookSlide(e), draw() {} }) });
+      add("Appendix", { id: "evidence", label: "Evidence library", render: (e) => ATS.pages.evidence(e) });
       add("Appendix", { id: "checks", label: "Data Quality", render: (e) => ATS.pages.checks(e) });
       return pg;
     },

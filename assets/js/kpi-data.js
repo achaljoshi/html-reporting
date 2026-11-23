@@ -129,7 +129,7 @@
       if (!we) { const raw = X.field(r, "weekending"); warnings.push({ sheet: "Weekly_Snapshot", msg: `Row ${r._row}: Week Ending ${raw == null || raw === "" ? "is empty" : `"${String(raw).trim().slice(0, 20)}" is not a valid date`} — this row is not counted.` }); return; }
       NUMCOLS.forEach(([k, label]) => { const raw = X.field(r, k); if (raw != null && String(raw).trim() !== "" && N.num(raw) == null) warnings.push({ sheet: "Weekly_Snapshot", msg: `W/E ${we}: "${String(raw).trim().slice(0, 20)}" in ${label} is not a number, so it was ignored.` }); });
       snapMap[we] = {
-        weekEnding: we,
+        weekEnding: we, row: r._row,
         testDays: N.num(X.field(r, "plannedtestdays")),
         downtime: N.num(X.field(r, "downtimehours")),
         highReqs: N.num(X.field(r, "highriskrequirements")), highTcs: N.num(X.field(r, "highrisktestcases")), highCov: N.num(X.field(r, "highriskcoveredreqs")),
@@ -159,7 +159,7 @@
     // ---- Topic progress
     const topicProgress = X.table(wb, "Topic_Progress", ["Week Ending", "Topic", "Phase", "TCs Planned"])
       .map((r) => ({
-        weekEnding: D.toIso(X.field(r, "weekending")), topic: N.str(X.field(r, "topic")), phase: N.str(X.field(r, "phase")),
+        row: r._row, weekEnding: D.toIso(X.field(r, "weekending")), topic: N.str(X.field(r, "topic")), phase: N.str(X.field(r, "phase")),
         planned: N.num(X.field(r, "tcsplanned")) || 0, designed: N.num(X.field(r, "tcsdesigned")) || 0,
         passed: N.num(X.field(r, "passed")) || 0, failed: N.num(X.field(r, "failed")) || 0, blocked: N.num(X.field(r, "blocked")) || 0,
         comments: N.str(X.field(r, "comments")),
@@ -172,7 +172,7 @@
       .map((r) => {
         const sev = N.str(X.field(r, "severity"));
         return {
-          id: N.str(X.field(r, "defectid")), summary: N.str(X.field(r, "summary")), topic: N.str(X.field(r, "topic")),
+          row: r._row, id: N.str(X.field(r, "defectid")), summary: N.str(X.field(r, "summary")), topic: N.str(X.field(r, "topic")),
           testType: N.str(X.field(r, "testtype")) || "SIT", priority: normPriority(X.field(r, "priority")), severity: sev,
           sevNum: parseInt(sev, 10) || null, raised: D.toIso(X.field(r, "raiseddate")), resolved: D.toIso(X.field(r, "resolveddate")),
           status: normStatus(X.field(r, "status")), foundIn: /prod/i.test(N.str(X.field(r, "foundin")) + " " + N.str(X.field(r, "testtype"))) ? "Production" : "Testing",
@@ -184,7 +184,7 @@
     // ---- TSRs
     const tsrs = X.table(wb, "TSR_Log", ["TSR Ref", "Description", "Received Date", "Returned Date"])
       .map((r) => ({
-        ref: N.str(X.field(r, "tsrref")), desc: N.str(X.field(r, "description")), topic: N.str(X.field(r, "topic")),
+        row: r._row, ref: N.str(X.field(r, "tsrref")), desc: N.str(X.field(r, "description")), topic: N.str(X.field(r, "topic")),
         received: D.toIso(X.field(r, "receiveddate")), returned: D.toIso(X.field(r, "returneddate")),
         hold: N.num(X.field(r, "holddays")) || 0, status: N.str(X.field(r, "status")) || "Open", value: N.num(X.field(r, "value")),
       }))
@@ -193,7 +193,7 @@
     // ---- Milestones
     const milestones = X.table(wb, "Milestones", ["Milestone", "Due Date", "Completed Date", "Critical?"])
       .map((r) => ({
-        name: N.str(X.field(r, "milestone")), topic: N.str(X.field(r, "topic")), due: D.toIso(X.field(r, "duedate")),
+        row: r._row, name: N.str(X.field(r, "milestone")), topic: N.str(X.field(r, "topic")), due: D.toIso(X.field(r, "duedate")),
         forecast: D.toIso(X.field(r, "forecastdate")), completed: D.toIso(X.field(r, "completeddate")),
         owner: N.str(X.field(r, "owner")), critical: yes(X.field(r, "critical")),
       }))
@@ -211,7 +211,7 @@
           areas[k] = { rag: R.norm(r[N.norm(p + "rag")]), note: N.str(r[N.norm(p + "note")]) };
         });
         return {
-          weekEnding: D.toIso(X.field(r, "weekending")), topic: N.str(X.field(r, "topic")), sitStart: D.toIso(X.field(r, "plannedsitstart")),
+          row: r._row, weekEnding: D.toIso(X.field(r, "weekending")), topic: N.str(X.field(r, "topic")), sitStart: D.toIso(X.field(r, "plannedsitstart")),
           overall: R.norm(X.field(r, "overallrag")), areas, roadToGreen: N.str(X.field(r, "roadtogreen")),
         };
       })
@@ -220,7 +220,7 @@
     // ---- Commentary
     const commentary = X.table(wb, "Commentary", ["Week Ending", "KPI", "Key Highlights", "Executive Commentary"])
       .map((r) => ({
-        weekEnding: D.toIso(X.field(r, "weekending")), kpi: N.str(X.field(r, "kpi")), highlights: N.str(X.field(r, "keyhighlights")),
+        row: r._row, weekEnding: D.toIso(X.field(r, "weekending")), kpi: N.str(X.field(r, "kpi")), highlights: N.str(X.field(r, "keyhighlights")),
         concern: N.str(X.field(r, "areaofconcern")), actions: N.str(X.field(r, "actionsunderway")), exec: N.str(X.field(r, "executivecommentary")),
         ragOverride: R.norm(X.field(r, "ragoverride")), positionOverride: N.str(X.field(r, "currentpositionoverride")),
       }))
@@ -228,18 +228,18 @@
 
     const resourcing = X.table(wb, "Resourcing", ["Role", "Name", "Organisation", "Allocation"])
       .map((r) => ({
-        role: N.str(X.field(r, "role")), name: N.str(X.field(r, "name")), org: N.str(X.field(r, "organisation")),
+        row: r._row, role: N.str(X.field(r, "role")), name: N.str(X.field(r, "name")), org: N.str(X.field(r, "organisation")),
         alloc: N.ratio(X.field(r, "allocation"), 1), start: D.toIso(X.field(r, "startdate")), end: D.toIso(X.field(r, "enddate")),
         status: N.str(X.field(r, "status")) || "Active",
       }))
       .filter((r) => r.role);
     const demand = X.table(wb, "Demand_Forecast", ["Month", "Planned FTE", "Available FTE"])
-      .map((r) => ({ month: D.toIso(X.field(r, "month")), planned: N.num(X.field(r, "plannedfte")), available: N.num(X.field(r, "availablefte")), notes: N.str(r.notes) }))
+      .map((r) => ({ row: r._row, month: D.toIso(X.field(r, "month")), planned: N.num(X.field(r, "plannedfte")), available: N.num(X.field(r, "availablefte")), notes: N.str(r.notes) }))
       .filter((r) => r.month)
       .sort((a, b) => (a.month < b.month ? -1 : 1));
     const lessons = X.table(wb, "Lessons_Learned", ["Date", "Category", "Lesson Learned", "Improvement Action"])
       .map((r) => ({
-        date: D.toIso(X.field(r, "date")), category: N.str(X.field(r, "category")), lesson: N.str(X.field(r, "lessonlearned")),
+        row: r._row, date: D.toIso(X.field(r, "date")), category: N.str(X.field(r, "category")), lesson: N.str(X.field(r, "lessonlearned")),
         action: N.str(X.field(r, "improvementaction")), owner: N.str(X.field(r, "owner")), status: N.str(X.field(r, "status")),
       }))
       .filter((r) => r.lesson);
@@ -718,7 +718,7 @@
     const declared = snap && snap.rag ? snap.rag : "";
     const ov = manualFor(data, "Overall", period);
     const rag = (ov && ov.ragOverride) || declared || computed;
-    const out = { period, prevPeriod: prevP, asOf, items, byKey, scorecard: sc, overall: { rag, computed, declared: (ov && ov.ragOverride) || declared, summary: (ov && ov.exec) || (snap && snap.summary) || "", manual: ov, snapWeek: snap ? snap.weekEnding : null } };
+    const out = { period, prevPeriod: prevP, asOf, items, byKey, scorecard: sc, overall: { att: [].concat((snap && snap.att) || [], (ov && ov.att) || []), rag, computed, declared: (ov && ov.ragOverride) || declared, summary: (ov && ov.exec) || (snap && snap.summary) || "", manual: ov, snapWeek: snap ? snap.weekEnding : null } };
     if (ext.withPrev !== false) {
       const prevOut = K.computeAll(data, prevP, Object.assign({}, ext, { withPrev: false }));
       out.prev = prevOut;

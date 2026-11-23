@@ -155,6 +155,22 @@ table(['Sheet', 'Columns', 'Notes'], [
   ['Lists', 'Dropdown values', 'Edit Topic here; leave the rest unless you add a new value.'],
 ], [2000, 4438, 3200]);
 
+h2('5.10 Attachments — pictures and Outlook emails on any row');
+p('Any row of the weekly workbook, the RAID log or the POAP can carry evidence: a screenshot, an email, a PDF. Put it **inside the Excel file** on the row it belongs to. The dashboard finds it when you load the folder and shows a paperclip next to that note, defect, risk, decision or plan item; click it to open the picture or read the email, and download the original.');
+table(['To attach', 'In Excel'], [
+  ['A picture or screenshot', 'Click a cell on the item\'s row, then **Insert → Pictures**, or paste a screenshot (Ctrl+V). Keep the picture\'s top-left corner on that row; a spare column to the right of the table is a good place.'],
+  ['An Outlook email', '**Insert → Object → Create from File → Browse**, choose the `.msg` file, tick **Display as icon**, leave *Link to file* unticked, **OK**. Or drag the email straight from Outlook onto a cell of the row.'],
+  ['A PDF or other file', 'Same as an email: **Insert → Object → Create from File**, tick *Display as icon*.'],
+], [2400, 7238]);
+ul([
+  'The row is the row where the picture or icon\'s top-left corner sits. Drop it on a data row (not on the header).',
+  'Several attachments on one row are shown together. Each file can be up to 15 MB; large pictures make the workbook slow to open, so shrink screenshots first.',
+  'Open from the dashboard: pictures zoom and pan, emails show sender, recipients, date, body and their own attachments (open or download each), and **Save as .eml** gives a copy that Outlook, Apple Mail or Thunderbird can open. **Download** gives the original file.',
+  '**Appendix → Evidence library** gathers everything attached in the portfolio, with search and a gallery. **Appendix → Data Quality** lists attachments that are not on a data row.',
+  'Email bodies are shown safely: scripts and remote images in an email are blocked.',
+]);
+note('Attachments are read from the workbook on your computer; nothing is uploaded. Pictures and files appear on pages that list the item (for example a risk on the Risks page); a closed defect\'s attachments appear in the Evidence library.');
+
 h1('6. POAP — plan on a page');
 p('Fill `ATS_POAP.xlsx` once and update dates and status as the plan moves. The dashboard turns it into a roadmap (Gantt), a one-page poster and an integration-flow explorer.');
 table(['Sheet', 'One row per', 'Key columns'], [
