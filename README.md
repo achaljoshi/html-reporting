@@ -184,3 +184,10 @@ It works in a separate git worktree on an `ai/<id>-<slug>` branch, re-runs `npm 
 | `npm run test:e2e` | Playwright smoke tests in Chromium (starts its own server) |
 | `npm run serve` | static server on http://localhost:8765 (`PORT` overrides) |
 | `npm run qa` | build + test + test:e2e (also run by GitHub Actions on every push / PR) |
+
+## 12. Hosting on GitLab Pages
+The dashboard is a static site, so GitLab Pages can serve it; `.gitlab-ci.yml` publishes it from the default branch (`node tools/build_pages.js public` copies only `index.html`, `assets/`, `templates/`, `docs/`). Excel data is never uploaded — each user loads their own workbooks in their browser.
+1. Create a GitLab project and push this repo to it (set the project to **Private**).
+2. The first pipeline on the default branch runs the `pages` job; the URL appears under **Deploy → Pages**.
+3. **Restrict access:** *Settings → General → Visibility, project features, permissions → Pages* → **Only Project Members**. Do this before sharing the link: the site includes the client PowerPoint theme (logos).
+4. Add people as project members (Reporter is enough to view). Over https, "Load program folder" and "Refresh data" work in Chrome/Edge.
