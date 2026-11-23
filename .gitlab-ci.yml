@@ -13,6 +13,7 @@ pages:
         cp -R index.html assets templates docs README.md public/
         test -s public/index.html
       fi
+  tags: [ats-pages]               # the job runs only on a runner registered with this tag
   pages: true                     # deploys ./public (the default publish folder)
   rules:
     - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
